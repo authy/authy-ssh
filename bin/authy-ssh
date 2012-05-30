@@ -1,0 +1,85 @@
+#!/bin/bash
+
+AUTHY_URL="http://localhost:4567"
+AUTHY_API_KEY="$1"
+
+function require_curl() {
+    curl --help 2>&1 > /dev/null
+
+    if [ $? -ne 0 ]
+    then
+        echo "install curl and try again"
+        $SSH_ORIGINAL_COMMAND || $SHELL
+    fi
+}
+
+function run_shell() {
+    if [ $SSH_ORIGINAL_COMMAND ] # when user runs: ssh server <command>
+    then
+        $SSH_ORIGINAL_COMMAND
+        exit 0
+    elif [ $SHELL ] # when user runs: ssh server
+    then
+        $SHELL
+        exit 0
+    fi
+}
+
+function find_authy_id() {
+    echo "16"
+}
+
+function login() {
+    authy_token="$1"
+    authy_id=$(find_authy_id) # read authy id that matches $USER
+
+    url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
+    response="`curl ${url} 2>/dev/null`" # TODO: replace with a log file
+
+    if [ $? -ne 0 ] # something went wrong when running the command, let it pass
+    then
+        echo "Error running curl"
+        run_shell
+    fi
+
+    if [ "$response" == "valid token" ]
+    then
+        echo "Your authy token was accepted." # TODO: configurable banner
+        run_shell
+    else
+        echo "Invalid token. try again"
+    fi
+}
+
+function request_sms() {
+    authy_id=$(find_authy_id) # read authy id that matches $USER
+    url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}"
+
+    response=`curl $url 2>/dev/null`
+
+    if [[ $response == *success*true* ]]
+    then
+        echo "SMS message was sent"
+    elif [[ $response == *\"enable_sms\"* ]]
+    then
+        echo "SMS is not enabled for this account"
+    else
+        echo "Message couldn't be sent: $response"
+    fi
+}
+
+function run() {
+    while :
+    do
+        echo -n "Authy Token (type 'sms' to request a SMS token): "
+        read authy_token
+
+        case $authy_token in
+            sms) request_sms ;;
+            *) login $authy_token ;;
+        esac
+    done
+}
+
+require_curl
+run
