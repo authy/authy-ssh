@@ -1,7 +1,8 @@
 #!/bin/bash
 
 AUTHY_URL="http://localhost:4567"
-AUTHY_API_KEY="$1"
+APP_ROOT=`dirname $0`
+CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
 
 function require_curl() {
     curl --help 2>&1 > /dev/null
@@ -9,7 +10,71 @@ function require_curl() {
     if [ $? -ne 0 ]
     then
         echo "install curl and try again"
-        $SSH_ORIGINAL_COMMAND || $SHELL
+        run_shell
+    fi
+}
+
+function check_config_file() {
+    if [[ ! -f $CONFIG_FILE ]]
+    then
+        echo "Generating config file $CONFIG_FILE"
+        echo "banner=Your token was accepted." > $CONFIG_FILE
+        echo "api_key=replace_me" >> $CONFIG_FILE
+    fi
+    return 0
+}
+
+# Usage: $(read_config banner)
+function read_config() {
+    key="$1"
+
+    if [[ ! -f $CONFIG_FILE ]]
+    then
+        echo "ERROR: $config_file couldn't be found"
+        run_shell
+    fi
+
+    while IFS='=' read -r ckey value
+    do
+        if [[ $ckey == $key ]]
+        then
+            echo $value # don't stop the loop to be able to read repeated keys
+        fi
+    done < $CONFIG_FILE
+}
+
+# usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>"
+function register_user() {
+    local_user=$1
+    url="$AUTHY_URL/protected/json/users/new?api_key=${AUTHY_API_KEY} -d user[email]=$2 -d user[country_code]=$3 -d user[cellphone]=$4 -s"
+
+    response=`curl ${url} 2>/dev/null`
+    ok=true
+
+    if [[ $response == *cellphone* ]]
+    then
+        echo "Cellphone is invalid"
+        ok=false
+    fi
+
+    if [[ $response == *email* ]]
+    then
+        echo "Email is invalid"
+        ok=false
+    fi
+
+    if [ ! $ok ]
+    then
+        exit 1
+    fi
+
+    if [[ $response == *user*id* ]]
+    then
+        user_id=`echo $response | grep -Po '\d+'`
+        echo "user=$local_user:$user_id" >> $CONFIG_FILE
+        echo "User was registered"
+    else
+        echo "Unknown response: $response"
     fi
 }
 
@@ -26,15 +91,23 @@ function run_shell() {
 }
 
 function find_authy_id() {
-    echo "16"
+    for user in `read_config user`
+    do
+        IFS=":"; declare -a authy_user=($user)
+        if [[ ${authy_user[0]} == $USER ]]
+        then
+            echo ${authy_user[1]}
+            return 0
+        fi
+    done
 }
 
 function login() {
     authy_token="$1"
-    authy_id=$(find_authy_id) # read authy id that matches $USER
+    authy_id=$(find_authy_id)
 
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
-    response="`curl ${url} 2>/dev/null`" # TODO: replace with a log file
+    response="`curl ${url} 2>/dev/null`"
 
     if [ $? -ne 0 ] # something went wrong when running the command, let it pass
     then
@@ -44,7 +117,7 @@ function login() {
 
     if [ "$response" == "valid token" ]
     then
-        echo "Your authy token was accepted." # TODO: configurable banner
+        echo $(read_config banner)
         run_shell
     else
         echo "Invalid token. try again"
@@ -55,7 +128,7 @@ function request_sms() {
     authy_id=$(find_authy_id) # read authy id that matches $USER
     url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}"
 
-    response=`curl $url 2>/dev/null`
+    response=`curl ${url} 2>/dev/null`
 
     if [[ $response == *success*true* ]]
     then
@@ -69,6 +142,11 @@ function request_sms() {
 }
 
 function run() {
+    if [[ ! $(find_authy_id) ]] #user is not using authy, let it go
+    then
+        run_shell
+    fi
+
     while :
     do
         echo -n "Authy Token (type 'sms' to request a SMS token): "
@@ -82,4 +160,25 @@ function run() {
 }
 
 require_curl
-run
+AUTHY_API_KEY="$(read_config api_key)"
+
+
+case $1 in
+    register)
+        check_config_file
+        register_user $2 $3 $4 $5
+        ;;
+    login)
+        if [[ ! $AUTHY_API_KEY ]]
+        then
+            echo "Cannot find a valid api key"
+            run_shell
+        fi
+        run
+        ;;
+    *)
+        cat <<__EOF__
+    TODO: help
+__EOF__
+        ;;
+esac
