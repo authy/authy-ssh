@@ -73,6 +73,9 @@ function register_user() {
         user_id=`echo $response | grep -Po '\d+'`
         echo "user=$local_user:$user_id" >> $CONFIG_FILE
         echo "User was registered"
+    elif [[ $response == "invalid key" ]]
+    then
+        echo "The api_key value in $CONFIG_FILE is not valid"
     else
         echo "Unknown response: $response"
     fi
@@ -160,16 +163,16 @@ function run() {
 }
 
 require_curl
+check_config_file
 AUTHY_API_KEY="$(read_config api_key)"
 
 
 case $1 in
     register)
-        check_config_file
         register_user $2 $3 $4 $5
         ;;
     login)
-        if [[ ! $AUTHY_API_KEY ]]
+        if [[ $AUTHY_API_KEY == "replace_me" ]]
         then
             echo "Cannot find a valid api key"
             run_shell
@@ -178,7 +181,20 @@ case $1 in
         ;;
     *)
         cat <<__EOF__
-    TODO: help
+Usage: authy-ssh <command> <arguments>
+
+Available commands:
+
+    register
+        receives a list of arguments needed to register a user. usage:
+
+        authy-ssh register <local-user> <email> <country code> <cellphone>
+
+    login
+        ask a token to the user. to use this command modify /etc/sshd_config in your server and add:
+
+        ForceCommand bash /path/to/authy-ssh login
+
 __EOF__
         ;;
 esac
