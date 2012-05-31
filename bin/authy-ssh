@@ -48,6 +48,13 @@ function register_user() {
     local_user=$1
     url="$AUTHY_URL/protected/json/users/new?api_key=${AUTHY_API_KEY} -d user[email]=$2 -d user[country_code]=$3 -d user[cellphone]=$4 -s"
 
+    response=`id ${local_user} 2>/dev/null`
+    if [[ $? -ne 0 ]]
+    then
+        echo ">> $local_user was not found in your system"
+        exit 1
+    fi
+
     response=`curl ${url} 2>/dev/null`
     ok=true
 
