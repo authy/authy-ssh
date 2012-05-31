@@ -1,6 +1,6 @@
 #!/bin/bash
 
-AUTHY_URL="http://localhost:4567"
+AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
 
