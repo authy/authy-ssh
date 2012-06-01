@@ -4,23 +4,50 @@ AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
 
+export TERM="xterm-256color"
+NORMAL=$(tput sgr0)
+GREEN=$(tput setaf 2; tput bold)
+YELLOW=$(tput setaf 3)
+RED=$(tput setaf 1)
+
+function red() {
+    echo -e "$RED$*$NORMAL"
+}
+
+function green() {
+    echo -e "$GREEN$*$NORMAL"
+}
+
+function yellow() {
+    echo -e "$YELLOW$*$NORMAL"
+}
+
 function require_curl() {
     curl --help 2>&1 > /dev/null
 
     if [ $? -ne 0 ]
     then
-        echo "install curl and try again"
+        red "install curl and try again"
         run_shell
     fi
 }
 
 function check_config_file() {
+    dir=`dirname ${CONFIG_FILE}`
+    if [[ ! -r $dir ]]
+    then
+        red "ERROR: ${dir} cannot be written by $(whoami)"
+        return 1
+    fi
+
     if [[ ! -f $CONFIG_FILE ]]
     then
         echo "Generating config file $CONFIG_FILE"
         echo "banner=Your token was accepted." > $CONFIG_FILE
         echo "api_key=replace_me" >> $CONFIG_FILE
     fi
+
+    chmod 600 $CONFIG_FILE 2>/dev/null
     return 0
 }
 
@@ -43,6 +70,29 @@ function read_config() {
     done < $CONFIG_FILE
 }
 
+function install_user() {
+    local_user=$1
+    if [[ !$local_user ]]
+    then
+        local_user=$(whoami)
+    fi
+
+    eval home_path="~$local_user"
+    auth_keys="${home_path}/.ssh/authorized_keys"
+
+    if [[ -f $auth_keys ]]
+    then
+        echo "Installing authy on ${auth_keys}..."
+        cp "${auth_keys}" "${auth_keys}.backup.$(date +%F)"
+        sed -ie "s/^\(ssh-.*\)$/command=\"$(echo $COMMAND | sed -e 's/[\/&]/\\&/g') login\" \\1/" "${auth_keys}"
+        green "authy-ssh was installed on $local_user account"
+        yellow "Please verify that you can log in before closing this session"
+    else
+        yellow "Please add allowed keys to ${auth_keys} and try again"
+        return -1
+    fi
+}
+
 # usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>"
 function register_user() {
     local_user=$1
@@ -51,7 +101,7 @@ function register_user() {
     response=`id ${local_user} 2>/dev/null`
     if [[ $? -ne 0 ]]
     then
-        echo ">> $local_user was not found in your system"
+        red "$local_user was not found in your system"
         exit 1
     fi
 
@@ -60,13 +110,13 @@ function register_user() {
 
     if [[ $response == *cellphone* ]]
     then
-        echo "Cellphone is invalid"
+        yellow "Cellphone is invalid"
         ok=false
     fi
 
     if [[ $response == *email* ]]
     then
-        echo "Email is invalid"
+        yellow "Email is invalid"
         ok=false
     fi
 
@@ -79,12 +129,12 @@ function register_user() {
     then
         user_id=`echo $response | grep -Po '\d+'`
         echo "user=$local_user:$user_id" >> $CONFIG_FILE
-        echo "User was registered"
+        green "User was registered"
     elif [[ $response == "invalid key" ]]
     then
-        echo "The api_key value in $CONFIG_FILE is not valid"
+        yellow "The api_key value in $CONFIG_FILE is not valid"
     else
-        echo "Unknown response: $response"
+        red "Unknown response: $response"
     fi
 }
 
@@ -121,16 +171,16 @@ function login() {
 
     if [ $? -ne 0 ] # something went wrong when running the command, let it pass
     then
-        echo "Error running curl"
+        red "Error running curl"
         run_shell
     fi
 
     if [ "$response" == "valid token" ]
     then
-        echo $(read_config banner)
+        green $(read_config banner)
         run_shell
     else
-        echo "Invalid token. try again"
+        red "Invalid token. try again"
     fi
 }
 
@@ -142,12 +192,12 @@ function request_sms() {
 
     if [[ $response == *success*true* ]]
     then
-        echo "SMS message was sent"
+        green "SMS message was sent"
     elif [[ $response == *\"enable_sms\"* ]]
     then
-        echo "SMS is not enabled for this account"
+        yellow "SMS is not enabled for this account"
     else
-        echo "Message couldn't be sent: $response"
+        red "Message couldn't be sent: $response"
     fi
 }
 
@@ -172,7 +222,9 @@ function run() {
 require_curl
 check_config_file
 AUTHY_API_KEY="$(read_config api_key)"
-
+cd `dirname $0`
+COMMAND="$PWD/`basename $0`"
+cd - >/dev/null
 
 case $1 in
     register)
@@ -181,10 +233,13 @@ case $1 in
     login)
         if [[ $AUTHY_API_KEY == "replace_me" ]]
         then
-            echo "Cannot find a valid api key"
+            red "Cannot find a valid api key"
             run_shell
         fi
         run
+        ;;
+    protect)
+        install_user $2
         ;;
     *)
         cat <<__EOF__
@@ -196,6 +251,11 @@ Available commands:
         receives a list of arguments needed to register a user. usage:
 
         authy-ssh register <local-user> <email> <country code> <cellphone>
+
+    protect
+        installs authy-ssh for the given user
+
+        authy-ssh protect <local-user>
 
     login
         ask a token to the user. to use this command modify /etc/sshd_config in your server and add:
