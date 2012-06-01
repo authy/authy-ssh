@@ -51,6 +51,20 @@ function check_config_file() {
     return 0
 }
 
+function check_api_key() {
+    default_action=$1
+    if [[ $AUTHY_API_KEY == "replace_me" || ! $AUTHY_API_KEY ]]
+    then
+        red "Cannot find a valid api key"
+        case $default_action in
+        run)
+            run_shell ;;
+        *)
+            exit 1 ;;
+        esac
+    fi
+}
+
 # Usage: $(read_config banner)
 function read_config() {
     key="$1"
@@ -228,20 +242,11 @@ cd - >/dev/null
 
 case $1 in
     register)
-        if [[ $AUTHY_API_KEY == "replace_me" ]]
-        then
-            red "Cannot find a valid api key"
-            exit 1
-        fi
-
+        check_api_key "exit"
         register_user $2 $3 $4 $5
         ;;
     login)
-        if [[ $AUTHY_API_KEY == "replace_me" ]]
-        then
-            red "Cannot find a valid api key"
-            run_shell
-        fi
+        check_api_key "run"
         run
         ;;
     protect)
