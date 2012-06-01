@@ -228,6 +228,12 @@ cd - >/dev/null
 
 case $1 in
     register)
+        if [[ $AUTHY_API_KEY == "replace_me" ]]
+        then
+            red "Cannot find a valid api key"
+            exit 1
+        fi
+
         register_user $2 $3 $4 $5
         ;;
     login)
