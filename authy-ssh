@@ -32,6 +32,76 @@ function require_curl() {
     fi
 }
 
+function install_authy() {
+    source="$1"
+    dest="$2/authy-ssh"
+    config_file="${dest}.conf"
+
+    if [[ ! -r `dirname $dest` ]]
+    then
+      red "${dest} is not writable. Try again using sudo"
+      return 1
+    fi
+
+    yellow "Copying ${source} to ${dest}..."
+    cp "${source}" "${dest}"
+
+    yellow "Setting up permissions..."
+    chmod 755 $dest
+
+    echo -n "Enter the Authy API key: "
+    read  authy_api_key
+
+    if [ ${#authy_api_key} != 32 ]
+    then
+      red "you have entered a wrong API key"
+      return 1
+    fi
+
+    yellow "Generating initial config on ${config_file}..."
+    echo "banner=Good job! You've securely log-in with Authy." > "${config_file}"
+    echo "api_key=${authy_api_key}" >> "${config_file}"
+    chmod 644 ${config_file}
+
+    if [[ -w /etc/sshd_config ]]
+    then
+      yellow "Adding 'ForceCommand ${dest} login' to /etc/sshd_config"
+      uninstall_authy "quiet" # remove previous installations
+
+      echo "ForceCommand ${dest} login" >> /etc/sshd_config
+      echo ""
+      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${dest} BEFORE COMMENTING THIS LINE OUT ON /etc/sshd_config"
+      sleep 5
+    fi
+
+    echo ""
+    echo "To enable two-factor authentication on your account type the following command: "
+    echo ""
+    green "   ${dest} enable $USER <your-email> <your-country-code> <your-cellphone>"
+    echo ""
+    echo "To enable two-factor authentication on user account type: "
+    echo ""
+    green "   ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>"
+    echo ""
+    echo "To uninstall authy type:"
+    echo ""
+    green "   ${dest} uninstall"
+    echo ""
+}
+
+function uninstall_authy() {
+    if [[ $1 != "quiet" ]]
+    then
+      yellow "Uninstalling Authy SSH..."
+    fi
+    sed -ie '/^ForceCommand.*authy-ssh.*/d' /etc/sshd_config
+
+    if [[ $1 != "quiet" ]]
+    then
+      green "Authy SSH was uninstalled, now you can safely remove ${APP_ROOT}/authy-ssh"
+    fi
+}
+
 function check_config_file() {
     dir=`dirname ${CONFIG_FILE}`
     if [[ ! -r $dir ]]
@@ -42,12 +112,17 @@ function check_config_file() {
 
     if [[ ! -f $CONFIG_FILE ]]
     then
-        echo "Generating config file $CONFIG_FILE"
-        echo "banner=Your token was accepted." > $CONFIG_FILE
-        echo "api_key=replace_me" >> $CONFIG_FILE
+        red "Authy ssh have not been configured" # FIXME: add more info
+        return 1
     fi
 
-    chmod 600 $CONFIG_FILE 2>/dev/null
+    if [[ $1 == "writable" && ! -w $CONFIG_FILE ]]
+    then
+        red "$CONFIG_FILE is not writable. Please try again using sudo"
+        exit -1
+    fi
+
+    chmod 644 $CONFIG_FILE 2>/dev/null
     return 0
 }
 
@@ -134,14 +209,14 @@ function register_user() {
         ok=false
     fi
 
-    if [ ! $ok ]
+    if [[ $ok == false ]]
     then
         exit 1
     fi
 
     if [[ $response == *user*id* ]]
     then
-        user_id=`echo $response | grep -Po '\d+'`
+        user_id=`echo $response | grep -o '[0-9]\{1,\}'` # match the authy id
         echo "user=$local_user:$user_id" >> $CONFIG_FILE
         green "User was registered"
     elif [[ $response == "invalid key" ]]
@@ -181,7 +256,7 @@ function login() {
     authy_id=$(find_authy_id)
 
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
-    response="`curl ${url} 2>/dev/null`"
+    response=`curl -sL -w '%{http_code}' '${url}' -o /dev/null`
 
     if [ $? -ne 0 ] # something went wrong when running the command, let it pass
     then
@@ -189,7 +264,7 @@ function login() {
         run_shell
     fi
 
-    if [ "$response" == "valid token" ]
+    if [ "$response" == "200" ]
     then
         green $(read_config banner)
         run_shell
@@ -241,7 +316,14 @@ COMMAND="$PWD/`basename $0`"
 cd - >/dev/null
 
 case $1 in
-    register)
+    install)
+        install_authy $0 $2
+        ;;
+    uninstall)
+        uninstall_authy
+        ;;
+    enable)
+        check_config_file "writable"
         check_api_key "exit"
         register_user $2 $3 $4 $5
         ;;
@@ -258,10 +340,15 @@ Usage: authy-ssh <command> <arguments>
 
 Available commands:
 
-    register
+    install
+        installs Authy SSH in the given directory. This command needs sudo if the directory is not writable.
+
+        authy-ssh install /usr/local/bin
+
+    enable
         receives a list of arguments needed to register a user. usage:
 
-        authy-ssh register <local-user> <email> <country code> <cellphone>
+        authy-ssh enable <local-user> <email> <country code> <cellphone>
 
     protect
         installs authy-ssh for the given user
