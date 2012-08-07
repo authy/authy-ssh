@@ -70,7 +70,7 @@ function install_authy() {
 
       echo "ForceCommand ${dest} login" >> /etc/sshd_config
       echo ""
-      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${dest} BEFORE COMMENTING THIS LINE OUT ON /etc/sshd_config"
+      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${dest} BEFORE COMMENTING ForceCommand OUT ON /etc/sshd_config"
       sleep 5
     fi
 
@@ -309,8 +309,6 @@ function run() {
 }
 
 require_curl
-check_config_file
-AUTHY_API_KEY="$(read_config api_key)"
 cd `dirname $0`
 COMMAND="$PWD/`basename $0`"
 cd - >/dev/null
@@ -324,14 +322,19 @@ case $1 in
         ;;
     enable)
         check_config_file "writable"
+        AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "exit"
         register_user $2 $3 $4 $5
         ;;
     login)
+        check_config_file
+        AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "run"
         run
         ;;
     protect)
+        check_config_file
+        AUTHY_API_KEY="$(read_config api_key)"
         install_user $2
         ;;
     *)
