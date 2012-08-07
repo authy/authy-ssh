@@ -23,6 +23,15 @@ function yellow() {
     echo -e "$YELLOW$*$NORMAL"
 }
 
+function require_root() {
+    find_sshd_config
+    if [[ ! -w $SSHD_CONFIG ]]
+    then
+      red "root permisisons are required to run this command. try again using sudo"
+      exit -1
+    fi
+}
+
 function require_curl() {
     curl --help 2>&1 > /dev/null
 
@@ -34,10 +43,10 @@ function require_curl() {
 }
 
 function find_sshd_config() {
-    if [[ -w /etc/sshd_config ]]
+    if [[ -f /etc/sshd_config ]]
     then
         SSHD_CONFIG="/etc/sshd_config"
-    elif [[ -w /etc/ssh/sshd_config ]]
+    elif [[ -f /etc/ssh/sshd_config ]]
     then
         SSHD_CONFIG="/etc/ssh/sshd_config"
     else
@@ -49,7 +58,7 @@ function add_force_command() {
     find_sshd_config
     authy_ssh_command="$1"
 
-    if [[ $SSHD_CONFIG ]]
+    if [[ -w $SSHD_CONFIG ]]
     then
       yellow "Adding 'ForceCommand ${authy_ssh_command} login' to ${SSHD_CONFIG}"
       uninstall_authy "quiet" # remove previous installations
@@ -111,11 +120,11 @@ function install_authy() {
     echo ""
     echo "To enable two-factor authentication on user account type: "
     echo ""
-    green "   ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>"
+    green "   sudo ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>"
     echo ""
     echo "To uninstall authy type:"
     echo ""
-    green "   ${dest} uninstall"
+    green "   sudo ${dest} uninstall"
     echo ""
 }
 
@@ -124,12 +133,10 @@ function uninstall_authy() {
 
     if [[ $1 != "quiet" ]]
     then
-      yellow "Uninstalling Authy SSH..."
+      yellow "Uninstalling Authy SSH from $SSHD_CONFIG..."
     fi
 
-    echo "SSHD_CONFIG=$SSHD_CONFIG"
-
-    if [[ $SSHD_CONFIG ]]
+    if [[ -w $SSHD_CONFIG ]]
     then
         sed -ie '/^ForceCommand.*authy-ssh.*/d' $SSHD_CONFIG
     fi
@@ -358,12 +365,15 @@ cd - >/dev/null
 
 case $1 in
     install)
+        require_root
         install_authy $0 $2
         ;;
     uninstall)
+        require_root
         uninstall_authy
         ;;
     enable)
+        require_root
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "exit"
