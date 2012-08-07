@@ -5,7 +5,7 @@
 
 Type the following command in the terminal:
 
-    $ curl http://raw.github.com/authy/authy-ssh/authy-ssh -O authy-ssh
+    $ curl 'https://raw.github.com/authy/authy-ssh/master/authy-ssh' -o authy-ssh
     $ sudo bash authy-ssh install /usr/local/bin
 
 ## Registering users
