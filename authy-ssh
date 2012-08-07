@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1"
+VERSION="1.0"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
@@ -64,6 +64,10 @@ function add_force_command() {
 function install_authy() {
     source="$1"
     dest="$2/authy-ssh"
+    if [[ ! $2 ]]
+    then
+      dest="/usr/local/bin/authy-ssh" # defaults to /usr/local/bin
+    fi
     config_file="${dest}.conf"
 
     if [[ ! -r `dirname $dest` ]]
@@ -100,9 +104,9 @@ function install_authy() {
 
     if [[ $SUDO_USER ]]
     then
-      green "   ${dest} enable $SUDO_USER <your-email> <your-country-code> <your-cellphone>"
+      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-country-code> <your-cellphone>"
     else
-      green "   ${dest} enable $USER <your-email> <your-country-code> <your-cellphone>"
+      green "   sudo ${dest} enable $USER <your-email> <your-country-code> <your-cellphone>"
     fi
     echo ""
     echo "To enable two-factor authentication on user account type: "
@@ -389,12 +393,12 @@ Available commands:
     install
         installs Authy SSH in the given directory. This command needs sudo if the directory is not writable.
 
-        authy-ssh install /usr/local/bin
+        sudo authy-ssh install /usr/local/bin
 
     enable
         receives a list of arguments needed to register a user. usage:
 
-        authy-ssh enable <local-user> <email> <country code> <cellphone>
+        sudo authy-ssh enable <local-user> <email> <country code> <cellphone>
 
     protect
         installs authy-ssh for the given user
