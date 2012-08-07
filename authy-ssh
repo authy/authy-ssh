@@ -123,6 +123,8 @@ function uninstall_authy() {
       yellow "Uninstalling Authy SSH..."
     fi
 
+    echo "SSHD_CONFIG=$SSHD_CONFIG"
+
     if [[ $SSHD_CONFIG ]]
     then
         sed -ie '/^ForceCommand.*authy-ssh.*/d' $SSHD_CONFIG
