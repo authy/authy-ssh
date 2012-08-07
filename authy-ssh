@@ -323,8 +323,13 @@ function find_authy_id() {
     done
 }
 
+function test_authy_ssh() {
+    run "test"
+}
+
 function login() {
     authy_token="$1"
+    mode="$2"
     authy_id=$(find_authy_id)
 
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
@@ -341,7 +346,12 @@ function login() {
     if [ "$response" == "200" ]
     then
         green $(read_config banner)
-        run_shell
+        if [[ $mode != "test" ]]
+        then
+            run_shell
+        else
+            exit 0
+        fi
     else
         red "Invalid token. try again"
     fi
@@ -366,10 +376,18 @@ function request_sms() {
 }
 
 function run() {
+    mode="$1"
     if [[ ! $(find_authy_id) ]] #user is not using authy, let it go
     then
-        debug "cannot find authy id in $CONFIG_FILE"
-        run_shell
+        if [[ $mode == "test" ]]
+        then
+            red "Cannot find authy id for $USER in $CONFIG_FILE"
+            red "You have to enable it using 'authy-ssh enable'"
+            exit -1
+        else
+            debug "cannot find authy id in $CONFIG_FILE"
+            run_shell
+        fi
     fi
 
     while :
@@ -379,7 +397,7 @@ function run() {
 
         case $authy_token in
             sms) request_sms ;;
-            *) login $authy_token ;;
+            *) login $authy_token $mode;;
         esac
     done
 }
@@ -400,7 +418,13 @@ case $1 in
         require_root
         uninstall_authy
         ;;
-    enable)
+    test|check)
+        check_config_file
+        AUTHY_API_KEY="$(read_config api_key)"
+        check_api_key "exit"
+        test_authy_ssh
+        ;;
+    enable|register)
         require_root
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
@@ -434,6 +458,14 @@ Available commands:
         installs Authy SSH in the given directory. This command needs sudo if the directory is not writable.
 
         sudo $0 install /usr/local/bin
+
+    uninstall
+        uninstalls Authy SSH from sshd_config
+
+        sudo $0 uninstall
+
+    test
+        tests if the Authy SSH is working correctly
 
     enable
         receives a list of arguments needed to register a user. usage:
