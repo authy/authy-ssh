@@ -395,17 +395,17 @@ Available commands:
     install
         installs Authy SSH in the given directory. This command needs sudo if the directory is not writable.
 
-        sudo authy-ssh install /usr/local/bin
+        sudo $0 install /usr/local/bin
 
     enable
         receives a list of arguments needed to register a user. usage:
 
-        sudo authy-ssh enable <local-user> <email> <country code> <cellphone>
+        sudo $0 enable <local-user> <email> <country code> <cellphone>
 
     protect
         installs authy-ssh for the given user
 
-        authy-ssh protect <local-user>
+        $0 protect <local-user>
 
     login
         ask a token to the user if it is already registered.
