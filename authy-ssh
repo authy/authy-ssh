@@ -1,5 +1,6 @@
 #!/bin/bash
 
+VERSION="0.1"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
@@ -29,6 +30,34 @@ function require_curl() {
     then
         red "install curl and try again"
         run_shell
+    fi
+}
+
+function find_sshd_config() {
+    if [[ -w /etc/sshd_config ]]
+    then
+        SSHD_CONFIG="/etc/sshd_config"
+    elif [[ -w /etc/ssh/sshd_config ]]
+    then
+        SSHD_CONFIG="/etc/ssh/sshd_config"
+    else
+        red "Cannot find sshd_config in your server. Authy SSH will be enabled when you add the ForceCommand to it"
+    fi
+}
+
+function add_force_command() {
+    find_sshd_config
+    authy_ssh_command="$1"
+
+    if [[ $SSHD_CONFIG ]]
+    then
+      yellow "Adding 'ForceCommand ${authy_ssh_command} login' to ${SSHD_CONFIG}"
+      uninstall_authy "quiet" # remove previous installations
+
+      echo "ForceCommand ${authy_ssh_command} login" >> ${SSHD_CONFIG}
+      echo ""
+      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${authy_ssh_command} BEFORE COMMENTING ForceCommand OUT ON ${SSHD_CONFIG}"
+      sleep 5
     fi
 }
 
@@ -63,21 +92,18 @@ function install_authy() {
     echo "api_key=${authy_api_key}" >> "${config_file}"
     chmod 644 ${config_file}
 
-    if [[ -w /etc/sshd_config ]]
-    then
-      yellow "Adding 'ForceCommand ${dest} login' to /etc/sshd_config"
-      uninstall_authy "quiet" # remove previous installations
-
-      echo "ForceCommand ${dest} login" >> /etc/sshd_config
-      echo ""
-      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${dest} BEFORE COMMENTING ForceCommand OUT ON /etc/sshd_config"
-      sleep 5
-    fi
+    add_force_command "${dest}"
 
     echo ""
     echo "To enable two-factor authentication on your account type the following command: "
     echo ""
-    green "   ${dest} enable $USER <your-email> <your-country-code> <your-cellphone>"
+
+    if [[ $SUDO_USER ]]
+    then
+      green "   ${dest} enable $SUDO_USER <your-email> <your-country-code> <your-cellphone>"
+    else
+      green "   ${dest} enable $USER <your-email> <your-country-code> <your-cellphone>"
+    fi
     echo ""
     echo "To enable two-factor authentication on user account type: "
     echo ""
@@ -90,15 +116,21 @@ function install_authy() {
 }
 
 function uninstall_authy() {
+    find_sshd_config
+
     if [[ $1 != "quiet" ]]
     then
       yellow "Uninstalling Authy SSH..."
     fi
-    sed -ie '/^ForceCommand.*authy-ssh.*/d' /etc/sshd_config
+
+    if [[ $SSHD_CONFIG ]]
+    then
+        sed -ie '/^ForceCommand.*authy-ssh.*/d' $SSHD_CONFIG
+    fi
 
     if [[ $1 != "quiet" ]]
     then
-      green "Authy SSH was uninstalled, now you can safely remove ${APP_ROOT}/authy-ssh"
+      green "Authy SSH was uninstalled, now you can safely remove ${APP_ROOT}/authy-ssh and $CONFIG_FILE"
     fi
 }
 
@@ -126,6 +158,9 @@ function check_config_file() {
     return 0
 }
 
+# Checks if the API KEY is valid. This function receives one argument which can be:
+#   - run: runs a shell even if the test fails.
+#   - anything else: exits the command
 function check_api_key() {
     default_action=$1
     if [[ $AUTHY_API_KEY == "replace_me" || ! $AUTHY_API_KEY ]]
@@ -309,8 +344,10 @@ function run() {
 }
 
 require_curl
+
+# get the absolute path to the command
 cd `dirname $0`
-COMMAND="$PWD/`basename $0`"
+COMMAND="$PWD/`basename $0`" 
 cd - >/dev/null
 
 case $1 in
@@ -337,9 +374,15 @@ case $1 in
         AUTHY_API_KEY="$(read_config api_key)"
         install_user $2
         ;;
+    version)
+        echo "Authy SSH v$VERSION"
+        exit 0
+        ;;
     *)
         cat <<__EOF__
 Usage: authy-ssh <command> <arguments>
+
+VERSION $VERSION
 
 Available commands:
 
@@ -359,9 +402,10 @@ Available commands:
         authy-ssh protect <local-user>
 
     login
-        ask a token to the user. to use this command modify /etc/sshd_config in your server and add:
+        ask a token to the user if it is already registered.
 
-        ForceCommand bash /path/to/authy-ssh login
+    version
+        prints the Authy SSH version
 
 __EOF__
         ;;
