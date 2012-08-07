@@ -98,18 +98,23 @@ function install_authy() {
     yellow "Setting up permissions..."
     chmod 755 $dest
 
-    echo -n "Enter the Authy API key: "
-    read  authy_api_key
-
-    if [ ${#authy_api_key} != 32 ]
+    if [[ ! -f ${config_file} ]]
     then
-      red "you have entered a wrong API key"
-      return 1
-    fi
+      echo -n "Enter the Authy API key: "
+      read  authy_api_key
 
-    yellow "Generating initial config on ${config_file}..."
-    echo "banner=Good job! You've securely log-in with Authy." > "${config_file}"
-    echo "api_key=${authy_api_key}" >> "${config_file}"
+      if [ ${#authy_api_key} != 32 ]
+      then
+        red "you have entered a wrong API key"
+        return 1
+      fi
+
+      yellow "Generating initial config on ${config_file}..."
+      echo "banner=Good job! You've securely log-in with Authy." > "${config_file}"
+      echo "api_key=${authy_api_key}" >> "${config_file}"
+    else
+      red "A config file was found on ${config_file}. Edit it manually if you want to change the API key"
+    fi
     chmod 644 ${config_file}
 
     add_force_command "${dest}"
@@ -133,6 +138,8 @@ function install_authy() {
     echo ""
     green "   sudo ${dest} uninstall"
     echo ""
+    yellow "    Restart the SSH server to apply changes"
+    echo ""
 }
 
 function uninstall_authy() {
@@ -150,7 +157,8 @@ function uninstall_authy() {
 
     if [[ $1 != "quiet" ]]
     then
-      green "Authy SSH was uninstalled, now you can safely remove ${APP_ROOT}/authy-ssh and $CONFIG_FILE"
+        green "Authy SSH was uninstalled."
+        yellow "Now restart the ssh server to apply changes and then remove ${APP_ROOT}/authy-ssh and $CONFIG_FILE"
     fi
 }
 
