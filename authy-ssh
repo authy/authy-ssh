@@ -274,8 +274,13 @@ function register_user() {
     if [[ $response == *user*id* ]]
     then
         user_id=`echo $response | grep -o '[0-9]\{1,\}'` # match the authy id
-        echo "user=$local_user:$user_id" >> $CONFIG_FILE
-        green "User was registered"
+        if [[ $user_id ]]
+        then
+            echo "user=$local_user:$user_id" >> $CONFIG_FILE
+            green "User was registered"
+        else
+            red "Cannot register user: $response"
+        fi
     elif [[ $response == "invalid key" ]]
     then
         yellow "The api_key value in $CONFIG_FILE is not valid"
@@ -315,14 +320,14 @@ function login() {
     authy_id=$(find_authy_id)
 
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
-    response=`curl -sL -w '%{http_code}' '${url}' -o /dev/null`
+    response=`curl -sL -w "%{http_code}" "${url}" -o /dev/null`
+    curl_exit_code=$?
 
-    debug "[verify-token] url: $url response: $response. curl exit status: $?"
+    debug "[verify-token] url: $url response: $response. curl exit status: $curl_exit_code"
 
-    if [ $? -ne 0 ] # something went wrong when running the command, let it pass
+    if [ $curl_exit_code -ne 0 ] # something went wrong when running the command, let it pass
     then
         red "Error running curl"
-        run_shell
     fi
 
     if [ "$response" == "200" ]
