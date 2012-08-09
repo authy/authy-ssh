@@ -359,7 +359,7 @@ function login() {
 
 function request_sms() {
     authy_id=$(find_authy_id) # read authy id that matches $USER
-    url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}"
+    url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
 
     response=`curl ${url} 2>/dev/null`
     debug "[request sms] url: $url response: $response. curl exit stats: $?"
@@ -367,7 +367,7 @@ function request_sms() {
     if [[ $response == *success*true* ]]
     then
         green "SMS message was sent"
-    elif [[ $response == *\"enable_sms\"* ]]
+    elif [[ $response == *sms*not*enabled* ]]
     then
         yellow "SMS is not enabled for this account"
     else
