@@ -72,7 +72,7 @@ function add_force_command() {
 
       echo "ForceCommand ${authy_ssh_command} login" >> ${SSHD_CONFIG}
       echo ""
-      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${authy_ssh_command} BEFORE COMMENTING ForceCommand OUT ON ${SSHD_CONFIG}"
+      red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${authy_ssh_command} BEFORE UNINSTALLING AUTHY SSH"
       sleep 5
     fi
 }
@@ -125,9 +125,11 @@ function install_authy() {
 
     if [[ $SUDO_USER ]]
     then
-      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-country-code> <your-cellphone>"
+      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-numeric-country-code> <your-cellphone>"
+      green "   Example: sudo $0 enable $SUDO_USER myuser@example.com 1 401-390-9987"
     else
-      green "   sudo ${dest} enable $USER <your-email> <your-country-code> <your-cellphone>"
+      green "   sudo ${dest} enable $USER <your-email> <your-numeric-country-code> <your-cellphone>"
+      green "   Example: sudo $0 enable $USER myuser@example.com 1 401-390-9987"
     fi
     echo ""
     echo "To enable two-factor authentication on user account type: "
@@ -138,7 +140,7 @@ function install_authy() {
     echo ""
     green "   sudo ${dest} uninstall"
     echo ""
-    yellow "    Restart the SSH server to apply changes"
+    yellow "      Restart the SSH server to apply changes"
     echo ""
 }
 
@@ -470,7 +472,9 @@ Available commands:
     enable
         receives a list of arguments needed to register a user. usage:
 
-        sudo $0 enable <local-user> <email> <country code> <cellphone>
+        sudo $0 enable <local-user> <email> <numeric country code> <cellphone>
+
+        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987
 
     protect
         installs authy-ssh for the given user
