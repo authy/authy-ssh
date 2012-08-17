@@ -109,9 +109,27 @@ function install_authy() {
         return 1
       fi
 
+      echo "Default action when api.authy.com cannot be contacted: "
+      echo ""
+      echo "  1. Disable two factor authentication until api.authy.com is back"
+      echo "  2. Don't allow logins until api.authy.com is back"
+      echo ""
+      echo -n "type 1 or 2 to select the option: "
+      read default_verify_action
+
+      case $default_verify_action in
+        1)
+          default_verify_action="disable"
+          ;;
+        2)
+          default_verify_action="enforce"
+          ;;
+      esac
+
       yellow "Generating initial config on ${config_file}..."
       echo "banner=Good job! You've securely log-in with Authy." > "${config_file}"
       echo "api_key=${authy_api_key}" >> "${config_file}"
+      echo "default_verify_action=${default_verify_action}" >> "${config_file}"
     else
       red "A config file was found on ${config_file}. Edit it manually if you want to change the API key"
     fi
@@ -168,7 +186,7 @@ function check_config_file() {
     dir=`dirname ${CONFIG_FILE}`
     if [[ ! -r $dir ]]
     then
-        red "ERROR: ${dir} cannot be written by $(whoami)"
+        red "ERROR: ${dir} cannot be written by $USER"
         return 1
     fi
 
@@ -228,7 +246,7 @@ function install_user() {
     local_user=$1
     if [[ !$local_user ]]
     then
-        local_user=$(whoami)
+        local_user=$USER
     fi
 
     eval home_path="~$local_user"
@@ -354,8 +372,20 @@ function login() {
         else
             exit 0
         fi
-    else
+    elif [ "$response" == "401" ]
+    then
         red "Invalid token. try again"
+    else
+        default_verify_action="$(read_config default_verify_action)"
+        case $default_verify_action in
+          enforce)
+              red "Two-factor authentication is down. Please try again later."
+              exit 0
+              ;;
+          *)
+              run_shell
+              ;;
+        esac
     fi
 }
 
