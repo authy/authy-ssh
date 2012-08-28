@@ -41,7 +41,7 @@ Restart your SSH server (look below if you are not on Ubuntu).
     
     sudo /etc/rc.d/sshd restart
     
-###  Installing without root priviledges.
+###  Installing without root privileges.
 
 Type the following command in the terminal:
 
