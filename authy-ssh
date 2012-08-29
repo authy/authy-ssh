@@ -324,8 +324,8 @@ function run_shell() {
         exec $SSH_ORIGINAL_COMMAND
     elif [ $SHELL ] # when user runs: ssh server
     then
-        debug "running shell: $SHELL -l"
-        exec $SHELL -l
+        debug "running shell: $SHELL"
+        exec -l $SHELL
     fi
 }
 
