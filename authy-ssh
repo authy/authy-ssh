@@ -229,7 +229,7 @@ function read_config() {
 
     if [[ ! -f $CONFIG_FILE ]]
     then
-        echo "ERROR: $config_file couldn't be found"
+        red "ERROR: $config_file couldn't be found"
         run_shell
     fi
 
@@ -363,6 +363,19 @@ function login() {
         red "Error running curl"
     fi
 
+    default_verify_action="$(read_config default_verify_action)"
+    if [[ $default_verify_action == "disable" ]]
+    then
+      check_response=`curl -s $AUTHY_URL -o /dev/null`
+      check_exit_code=$?
+
+      if [[ $check_exit_code == 7 ]]
+      then
+        red "Letting user pass through. api.authy.com could not be reached."
+        run_shell
+      fi
+    fi
+
     if [ "$response" == "200" ]
     then
         green $(read_config banner)
@@ -372,20 +385,8 @@ function login() {
         else
             exit 0
         fi
-    elif [ "$response" == "401" ]
-    then
-        red "Invalid token. try again"
     else
-        default_verify_action="$(read_config default_verify_action)"
-        case $default_verify_action in
-          enforce)
-              red "Two-factor authentication is down. Please try again later."
-              exit 0
-              ;;
-          *)
-              run_shell
-              ;;
-        esac
+        red "Invalid token. try again"
     fi
 }
 
