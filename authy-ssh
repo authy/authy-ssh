@@ -348,6 +348,20 @@ function test_authy_ssh() {
     run "test"
 }
 
+function check_interactive() {
+# kills connection for non-interactive shells for users that are using authy
+    if [[ $(find_authy_id) ]]
+    then    
+        fd=0
+        if [ -t "$fd" ]
+        then
+            debug "This is interactive terminal. Doing auth."
+        else
+            exit 0 # Shell is not interactive. Can't do anything.
+        fi
+    fi
+}
+
 function login() {
     authy_token="$(sed 's/[^0-9]*//g' <<<$1)"
     mode="$2"
@@ -495,6 +509,7 @@ case $1 in
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "run"
+        check_interactive
         run
         ;;
     protect)
