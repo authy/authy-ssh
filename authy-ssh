@@ -327,6 +327,8 @@ function run_shell() {
         debug "running shell: $SHELL"
         exec -l $SHELL
     fi
+
+    exit $?
 }
 
 function find_authy_id() {
