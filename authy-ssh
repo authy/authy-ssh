@@ -4,6 +4,7 @@ VERSION="1.0"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
+UPSTREAM_URL="https://raw.github.com/authy/authy-ssh/master/authy-ssh"
 
 export TERM="xterm-256color"
 NORMAL=$(tput sgr0)
@@ -435,6 +436,22 @@ function run() {
     done
 }
 
+function update_authy() {
+  curl "${UPSTREAM_URL}" -o /tmp/authy-ssh-new
+  chmod 755 /tmp/authy-ssh-new
+
+  echo -n "Do you want to overwrite ${COMMAND} (y/n)? "
+  read opt
+  if [[ "$opt" == "y" ]]
+  then
+    mv /tmp/authy-ssh-new ${COMMAND}
+    green "Now type authy-ssh test to verify everything is working."
+  else
+    rm /tmp/authy-ssh-new
+    yellow "Authy SSH was not updated."
+  fi
+}
+
 require_curl
 
 # get the absolute path to the command
@@ -446,6 +463,10 @@ case $1 in
     install)
         require_root
         install_authy $0 $2
+        ;;
+    update)
+        require_root
+        update_authy
         ;;
     uninstall)
         require_root
@@ -491,6 +512,11 @@ Available commands:
         installs Authy SSH in the given directory. This command needs sudo if the directory is not writable.
 
         sudo $0 install /usr/local/bin
+
+    update
+        updates Authy SSH using the main authy-ssh script:
+
+        ${UPSTREAM_URL}
 
     uninstall
         uninstalls Authy SSH from sshd_config
