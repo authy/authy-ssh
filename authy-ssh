@@ -359,7 +359,7 @@ function login() {
       return -1
     fi
 
-    url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
+    url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
     response=`curl -sL -w "%{http_code}" "${url}" -o /dev/null`
     curl_exit_code=$?
 
