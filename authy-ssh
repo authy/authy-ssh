@@ -409,7 +409,7 @@ function request_sms() {
         green "SMS message was sent"
     elif [[ $response == *sms*not*enabled* ]]
     then
-        yellow "SMS is not enabled for this account"
+        yellow "SMS is not enabled on Sandbox accounts. You need to upgrade to a Developer account at least."
     else
         red "Message couldn't be sent: $response"
     fi
