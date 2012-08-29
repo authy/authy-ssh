@@ -349,9 +349,15 @@ function test_authy_ssh() {
 }
 
 function login() {
-    authy_token="$1"
+    authy_token="$(sed 's/[^0-9]*//g' <<<$1)"
     mode="$2"
     authy_id=$(find_authy_id)
+
+    if [[ $authy_token == "" ]]
+    then
+      red "You have to enter only digits."
+      return -1
+    fi
 
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}"
     response=`curl -sL -w "%{http_code}" "${url}" -o /dev/null`
