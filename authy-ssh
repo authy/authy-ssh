@@ -433,7 +433,12 @@ function run() {
     while :
     do
         echo -n "Authy Token (type 'sms' to request a SMS token): "
-        read authy_token
+        read -t 60 authy_token
+        if [ $? -ne 0 ]
+        then
+            debug "Timeout on Authy Token read."
+            exit $?
+        fi
 
         case $authy_token in
             sms) request_sms ;;
