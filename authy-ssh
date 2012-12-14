@@ -363,7 +363,7 @@ function login() {
     if [[ $authy_token == "" ]]
     then
       red "You have to enter only digits."
-      return -1
+      return 1
     fi
 
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
@@ -449,7 +449,7 @@ function run() {
 
         case $authy_token in
             sms) request_sms ;;
-            *) login $authy_token $mode;;
+            *) login "$authy_token" $mode;;
         esac
     done
 }
