@@ -250,13 +250,8 @@ function read_config() {
     done < $CONFIG_FILE
 }
 
-function install_user() {
-    local_user=$1
-    if [[ !$local_user ]]
-    then
-        local_user=$USER
-    fi
-
+function protect_user() {
+    local_user=$USER
     eval home_path="~$local_user"
     auth_keys="${home_path}/.ssh/authorized_keys"
 
@@ -276,7 +271,49 @@ function install_user() {
 # usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>"
 function register_user() {
     local_user=$1
-    url="$AUTHY_URL/protected/json/users/new?api_key=${AUTHY_API_KEY} -d user[email]=$2 -d user[country_code]=$3 -d user[cellphone]=$4 -s"
+    email=$2
+    country_code=$3
+    cellphone=$4
+
+    if [[ ! $local_user ]]
+    then
+      echo -n "Username: "
+      read local_user
+    fi
+
+    if [[ ! $country_code ]]
+    then
+      echo -n "Your country code: "
+      read country_code
+    fi
+
+    if [[ ! $cellphone ]]
+    then
+      echo -n "Your cellphone: "
+      read cellphone
+    fi
+
+    if [[ ! $email ]]
+    then
+      echo -n "Your email: "
+      read email
+    fi
+
+    echo -e "
+
+    Username:\t${local_user}
+    Cellphone:\t(+${country_code}) ${cellphone}
+    Email:\t${email}
+
+"
+    echo -n "Do you want to enable this user? (y/n) "
+    read should_continue
+    if [[ "$should_continue" != y* ]]
+    then
+      exit 1
+    fi
+
+    url="$AUTHY_URL/protected/json/users/new?api_key=${AUTHY_API_KEY} -d user[email]=${email} -d user[country_code]=${country_code} -d user[cellphone]=${cellphone} -s"
 
     response=`id ${local_user} 2>/dev/null`
     if [[ $? -ne 0 ]]
@@ -528,7 +565,7 @@ case $1 in
     protect)
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
-        install_user $2
+        protect_user
         ;;
     version)
         echo "Authy SSH v$VERSION"
@@ -570,7 +607,7 @@ Available commands:
     protect
         installs authy-ssh for the given user
 
-        $0 protect <local-user>
+        $0 protect
 
     login
         ask a token to the user if it is already registered.
