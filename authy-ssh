@@ -329,7 +329,7 @@ function run_shell() {
     if [ $SSH_ORIGINAL_COMMAND ] # when user runs: ssh server <command>
     then
         debug "running command: $SSH_ORIGINAL_COMMAND"
-        exec $SSH_ORIGINAL_COMMAND
+        exec /bin/bash -c "${SSH_ORIGINAL_COMMAND}"
     elif [ $SHELL ] # when user runs: ssh server
     then
         debug "running shell: $SHELL"
@@ -393,7 +393,11 @@ function login() {
 
     if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"success\":\"true\"* ]]
     then
-        green $(read_config banner)
+        if [[ ! $AUTHY_TOKEN ]]
+        then
+          green $(read_config banner)
+        fi
+
         if [[ $mode != "test" ]]
         then
             run_shell
@@ -438,10 +442,21 @@ function run() {
         fi
     fi
 
-    while :
+    times=3
+    if [[ $AUTHY_TOKEN ]]
+    then
+      times=1
+    fi
+
+    for i in `seq 1 $times`
     do
-        echo -n "Authy Token (type 'sms' to request a SMS token): "
-        read -t 60 authy_token
+        authy_token="${AUTHY_TOKEN}"
+        if [[ ! $AUTHY_TOKEN ]]
+        then
+          echo -n "Authy Token (type 'sms' to request a SMS token): "
+          read -t 60 authy_token
+        fi
+
         if [ $? -ne 0 ]
         then
             debug "Timeout on Authy Token read."
