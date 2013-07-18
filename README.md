@@ -47,14 +47,12 @@ Type the following command in the terminal:
 
     $ curl 'https://raw.github.com/authy/authy-ssh/master/authy-ssh' -o authy-ssh
     $ bash authy-ssh install ~/.authy-ssh/
-
-Then enable two-factor for your user:
-
-    $ bash ~/.authy-ssh/authy-ssh enable `whoami` <your-email> <your-country-code> <your-cellphone>
+    
 
 Now protect your user:
 
     $ bash ~/.authy-ssh/authy-ssh protect
+
 
 ## How it works
 
@@ -100,9 +98,13 @@ Now force command will only operate on users that belong to the two-factor group
 
 ## Registering users.
 
-To enable users type:
+To enable users type the following command and fill the form:
 
-    $ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> 
+    $ sudo authy-ssh enable
+
+If you want to do it in one line just type:
+
+	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> 
 
 
 ## Enabling two-factor only on your user.
@@ -130,6 +132,15 @@ or
 
     AUTHY_TOKEN="valid-token" scp server:path/to/file local-file
 
+
+### Supporting multiple authy tokens under the same unix account.
+
+To support multiple tokens you have to remove the `ForceCommand` directive from your `sshd_config` and then add the authorized keys using the following command:
+
+	$ bash ~/.authy-ssh/authy-ssh protect
+
+
+The previous command will ask you the user ssh public key, cellphone and email.
 
 ## Uninstall
 

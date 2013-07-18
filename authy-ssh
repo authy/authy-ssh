@@ -251,25 +251,50 @@ function read_config() {
 }
 
 function protect_user() {
-    local_user=$USER
     eval home_path="~$local_user"
     auth_keys="${home_path}/.ssh/authorized_keys"
 
-    if [[ -f $auth_keys ]]
+    echo -n "Enter your public ssh key: "
+    read ssh_key
+
+    grep "$ssh_key" $auth_keys 2>&1 >/dev/null
+    grep_exit_code=$?
+    if [[ $grep_exit_code -eq 0 ]]
     then
-        echo "Installing authy on ${auth_keys}..."
-        cp "${auth_keys}" "${auth_keys}.backup.$(date +%F)"
-        sed -ie "s/^\(ssh-.*\)$/command=\"$(echo $COMMAND | sed -e 's/[\/&]/\\&/g') login\" \\1/" "${auth_keys}"
-        green "authy-ssh was installed on $local_user account"
-        yellow "Please verify that you can log in before closing this session"
-    else
-        yellow "Please add allowed keys to ${auth_keys} and try again"
-        return -1
+      yellow "The ssh key is already present in $auth_keys. Please remove it and try again."
+      exit 1
     fi
+
+    register_user_on_authy $USER
+    if [[ $? -ne 0 || ! $authy_user_id ]]
+    then
+      exit 1
+    fi
+
+    echo "command=\"$COMMAND login $authy_user_id\" $ssh_key" >> "${auth_keys}"
+    green "The user is now protected with authy"
 }
 
 # usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>"
 function register_user() {
+  register_user_on_authy $*
+
+  if [[ $? -ne 0 ]]
+  then
+    exit 1
+  fi
+
+  if [[ $authy_user_id ]]
+  then
+      echo "user=$local_user:$authy_user_id" >> $CONFIG_FILE
+      green "User was registered"
+  else
+      red "Cannot register user: $response"
+  fi
+
+}
+
+function register_user_on_authy() {
     local_user=$1
     email=$2
     country_code=$3
@@ -310,7 +335,7 @@ function register_user() {
     read should_continue
     if [[ "$should_continue" != y* ]]
     then
-      exit 1
+      return 1
     fi
 
     url="$AUTHY_URL/protected/json/users/new?api_key=${AUTHY_API_KEY} -d user[email]=${email} -d user[country_code]=${country_code} -d user[cellphone]=${cellphone} -s"
@@ -319,13 +344,13 @@ function register_user() {
     if [[ $? -ne 0 ]]
     then
         red "$local_user was not found in your system"
-        exit 1
+        return 1
     fi
 
     response=`curl --connect-timeout 10 ${url} 2>/dev/null`
     ok=true
 
-    debug "[register-user] url: $url response: $response. curl exit stats: $?"
+    debug "[register-user] url: $url response: $response curl exit stats: $?"
 
     if [[ $response == *cellphone* ]]
     then
@@ -341,25 +366,21 @@ function register_user() {
 
     if [[ $ok == false ]]
     then
-        exit 1
+        return 1
     fi
 
     if [[ $response == *user*id* ]]
     then
-        user_id=`echo $response | grep -o '[0-9]\{1,\}'` # match the authy id
-        if [[ $user_id ]]
-        then
-            echo "user=$local_user:$user_id" >> $CONFIG_FILE
-            green "User was registered"
-        else
-            red "Cannot register user: $response"
-        fi
+      authy_user_id=`echo $response | grep -o '[0-9]\{1,\}'` # match the authy id
+      return 0
     elif [[ $response == "invalid key" ]]
     then
         yellow "The api_key value in $CONFIG_FILE is not valid"
     else
         red "Unknown response: $response"
     fi
+
+    return 1
 }
 
 function run_shell() {
@@ -388,14 +409,18 @@ function find_authy_id() {
     done
 }
 
-function test_authy_ssh() {
-    run "test"
-}
-
+# login <test|login> "token" "authy-id"
 function login() {
-    authy_token="$(sed 's/[^0-9]*//g' <<<$1)"
-    mode="$2"
-    authy_id=$(find_authy_id)
+    mode=$1
+    authy_id=$3
+    authy_token="$(sed 's/[^0-9]*//g' <<<$2)"
+
+    if [[ ! $authy_id ]]
+    then
+      authy_id="$(find_authy_id)"
+    fi
+
+    debug "Logging $authy_id with $authy_token in $mode mode."
 
     if [[ $authy_token == "" ]]
     then
@@ -465,22 +490,18 @@ function request_sms() {
 }
 
 function run() {
-    mode="$1"
-    if [[ ! $(find_authy_id) ]] #user is not using authy, let it go
+    mode=$1
+    authy_id=$2
+
+    if [[ ! $authy_id && ! $(find_authy_id) && $mode == "test" ]] #user is not using authy, let it go
     then
-        if [[ $mode == "test" ]]
-        then
-            red "Cannot find authy id for $USER in $CONFIG_FILE"
-            red "You have to enable it using 'authy-ssh enable'"
-            exit -1
-        else
-            debug "cannot find authy id in $CONFIG_FILE"
-            run_shell
-        fi
+      red "Cannot find authy id for $USER in $CONFIG_FILE"
+      red "You have to enable it using 'authy-ssh enable'"
+      exit -1
     fi
 
     times=3
-    if [[ $AUTHY_TOKEN ]]
+    if [[ $AUTHY_TOKEN ]] # env var
     then
       times=1
     fi
@@ -502,7 +523,7 @@ function run() {
 
         case $authy_token in
             sms) request_sms ;;
-            *) login "$authy_token" $mode;;
+            *) login ${mode} ${authy_token} ${authy_id};;
         esac
     done
 }
@@ -547,7 +568,7 @@ case $1 in
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "exit"
-        test_authy_ssh
+        run "test"
         ;;
     enable|register)
         require_root
@@ -560,7 +581,7 @@ case $1 in
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "run"
-        run
+        run "login" $2
         ;;
     protect)
         check_config_file
