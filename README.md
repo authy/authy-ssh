@@ -72,11 +72,11 @@ Here's an example:
     
 In this case it means user root and daniel have two-factor enabled and that 1 is their  authy_id. If a user is not in this list, authy-ssh will automatically let him in.
 
-## Using two-factor with Automated deployment tools. 
+## Using two-factor auth with automated deployment tools. 
 
 
 If you use **capybara**, **chef**, **puppet**, **cfengine**, **git** you can create new users for this tools so they can enter the machine without requiring two-factor.
-Alternatively, you can user match on the forceCommand
+Alternatively, you can user match on the ForceCommand
 
 A good example is create a two-factor users group.
 
@@ -96,7 +96,7 @@ Now that my root user is in the two-factor group, I edit my /etc/ssh/sshd_config
 Now force command will only operate on users that belong to the two-factor group.
 
 
-## Registering users.
+## Enable two-factor auth on a user.
 
 To enable users type the following command and fill the form:
 
@@ -107,13 +107,7 @@ If you want to do it in one line just type:
 	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> 
 
 
-## Enabling two-factor only on your user.
-
-At any time any user can enable two-factor on his account only by typing:
-
-    $ authy-ssh protect
-
-## Enabling `scp` and `git push`
+## `scp` and `git push` with two-factor authentication.
 
 To enable non-interactive commands like `scp` and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
 
@@ -133,12 +127,22 @@ or
     AUTHY_TOKEN="valid-token" scp server:path/to/file local-file
 
 
-### Supporting multiple authy tokens under the same unix account.
+## Multiple users sharing the same unix account.
 
-To support multiple tokens you have to remove the `ForceCommand` directive from your `sshd_config` and then add the authorized keys using the following command:
+If you have many users that need to share a single login, you can still use strong two-factor authentication without sharing the same token. This means that every user can have their own Authy Token, ensuring non-repudiation.
+
+To achieve this, delete or comment out the `ForceCommand` directive from your `sshd_config`:
+
+	$ sudo sed -ie 's/^\(ForceCommand.*authy-ssh.*\)/#\1/g' /etc/ssh/sshd_config
+
+and then for each person add their ssh key using the following command:
 
 	$ bash ~/.authy-ssh/authy-ssh protect
 
+you should end up with an authorized_keys file that looks like:
+
+	command="/usr/local/bin/authy-ssh login 13386" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDGRJbWu+WLVXYVADY3iQPE1kA7CIOSqHmskPM8qIAzKzq+1eRdmPwDZNmAvIQnN/0N7317Rt1bmTRLBwhl6vfSgL6677vUwsevPo27tIxdja67ELTh55xVLcJ3O8x2qkZsySgkLP/n+w3MUwLe1ht31AZOAsV7J7imhWipDijiysNgvHyeSWsHqExaL1blPOYJVHcqPbKY4SxFRq/MWeyPf/Sm24MFSKEaY6u0kNx8MLJ1X9X/YxmY9rdvzsZdQ7Z/PYhYt2Ja/0mzfYx2leeP2JQBsVfZZzAoFEPpw6mSP9kJREGe2tXvS9cRenhz/+V0+mvSJKG0f0Zzh428pTzN
+	command="/usr/local/bin/authy-ssh login 20" ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyvj2d0rSDukDT04mK7njUxtXffUrOnDCm2Bqub0zN7LQS733nBHp89aMuBI5ENjw1SQ2qXhLxvK1Xhr0pQr+dOWNn3emQjQuiA+YL39yp2RLLpflerJ3KAVY09CHYLFxdKj/DJgXsH+LMAPe2uVmWCP2xAV5ZcLnz3CdS2SX/EVlbNrftesZx9uAbmwKPLY1pmW7q/75AhJRow8VTP7zM/VS7jEHkj03g51BZGB8tMI3G8RDVEDtu2jVwZiq+8BaNCyjYVlsLfu6uGhnXeeUS3swu/atlt+pxy+QTf/HGvrJR58tER+foqheWtV3LqXN4oLckzqTVkDDmnNJlmrpYQ==
 
 The previous command will ask you the user ssh public key, cellphone and email.
 
@@ -149,3 +153,4 @@ To uninstall type:
     $ sudo authy-ssh uninstall
     $ restart your SSH server
 
+	
