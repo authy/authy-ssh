@@ -637,14 +637,14 @@ Available commands:
     enable
         receives a list of arguments needed to register a user. usage:
 
-        sudo $0 enable <local-user> <email> <numeric country code> <cellphone>
+        sudo $0 enable [local-user] [email] [numeric country code] [cellphone]
 
         Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987
 
     protect
         installs authy-ssh for the given user
 
-        $0 protect
+        $0 protect [user]
 
     login
         ask a token to the user if it is already registered.
