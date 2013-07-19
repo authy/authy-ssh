@@ -312,7 +312,7 @@ function register_user() {
 
   if [[ $? -ne 0 ]]
   then
-    exit $FAIL
+      exit $FAIL
   fi
 
   if [[ $authy_user_id ]]
@@ -466,7 +466,7 @@ function login() {
     curl_exit_code=$?
     IFS='|' response_body=($response) # convert to array
 
-    debug "[verify-token] url: $url response: $response. curl exit status: $curl_exit_code"
+    debug "[verify-token] url: $url | response: $response | curl exit status: $curl_exit_code"
 
     if [ $curl_exit_code -ne 0 ] # something went wrong when running the command, let it pass
     then
@@ -476,6 +476,7 @@ function login() {
     default_verify_action="$(read_config default_verify_action)"
     if [[ $default_verify_action == "disable" ]]
     then
+        debug "Checking if authy service is up."
         check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -o /dev/null`
         check_exit_code=$?
 
@@ -513,7 +514,7 @@ function request_sms() {
     url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
 
     response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
-    debug "[request sms] url: $url response: $response. curl exit stats: $?"
+    debug "[request sms] url: $url | response: $response | curl exit stats: $?"
 
     if [[ $response == *success*sent* ]]
     then
