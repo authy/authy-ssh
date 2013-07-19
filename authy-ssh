@@ -516,6 +516,12 @@ function run() {
       exit -1
     fi
 
+    if [[ ! $(find_authy_id) ]]
+    then
+      debug "User is not protected with authy."
+      run_shell # user is not protected with 2fa
+    fi
+
     times=3
     if [[ $AUTHY_TOKEN ]] # env var
     then
