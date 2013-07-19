@@ -9,7 +9,6 @@ READ_TIMEOUT=60
 
 OK=0
 FAIL=1
-ITS_OK_TO_LOG_USER_IN=120
 
 export TERM="xterm-256color"
 NORMAL=$(tput sgr0)
@@ -237,13 +236,13 @@ function check_config_file() {
 #   - run: runs a shell even if the test fails.
 #   - anything else: exits the command
 function check_api_key() {
-    if [[ "$AUTHY_API_KEY" != "" && $AUTHY_API_KEY != "replace_me" ]]
+    if [[ "$AUTHY_API_KEY" == "" || $AUTHY_API_KEY == "replace_me" ]]
     then
-        return $OK
+        red "Cannot find a valid api key"
+        run_shell
     fi
 
-    red "Cannot find a valid api key"
-    return $ITS_OK_TO_LOG_USER_IN
+    return $OK
 }
 
 # Usage: $(read_config banner)
@@ -477,14 +476,14 @@ function login() {
     default_verify_action="$(read_config default_verify_action)"
     if [[ $default_verify_action == "disable" ]]
     then
-      check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -o /dev/null`
-      check_exit_code=$?
+        check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -o /dev/null`
+        check_exit_code=$?
 
-      if [[ $check_exit_code == 7 || $check_exit_code == 28 ]]
-      then
-        red "Letting user pass through. api.authy.com could not be reached."
-        return $ITS_OK_TO_LOG_USER_IN
-      fi
+        if [[ $check_exit_code == 7 || $check_exit_code == 28 ]]
+        then
+            red "Letting user pass through. api.authy.com could not be reached."
+            run_shell
+        fi
     fi
 
     if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"success\":\"true\"* ]]
@@ -492,12 +491,12 @@ function login() {
         debug "Two-factor token was accepted."
         if [[ "$AUTHY_TOKEN" == "" ]]
         then
-          green $(read_config banner)
+            green $(read_config banner)
         fi
 
         if [[ $mode != "test" ]]
         then
-            return $ITS_OK_TO_LOG_USER_IN
+            run_shell
         else
             debug "Test was successful"
             exit $OK
@@ -547,7 +546,7 @@ function ask_token_and_log_user_in() {
     if [[ $authy_id == "" ]]
     then
       debug "User is not protected with authy."
-      return $ITS_OK_TO_LOG_USER_IN
+      run_shell
     fi
 
     times=3
@@ -576,13 +575,6 @@ function ask_token_and_log_user_in() {
             *)
               authy_token="$(escape_number $authy_token)"
               login "${mode}" "${authy_token}" "${authy_id}"
-              login_result=$?
-
-              if [[ $login_result == $ITS_OK_TO_LOG_USER_IN ]]
-              then
-                return $ITS_OK_TO_LOG_USER_IN
-              fi
-
               ;;
         esac
     done
@@ -643,21 +635,7 @@ case $1 in
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key
-        check_result=$?
-
-        if [[ $check_result == $ITS_OK_TO_LOG_USER_IN ]]
-        then
-          run_shell
-        fi
-
         ask_token_and_log_user_in "login" "$2"
-        login_result=$?
-
-        if [[ $login_result == $ITS_OK_TO_LOG_USER_IN ]]
-        then
-          run_shell
-        fi
-
         ;;
     protect)
         check_config_file
