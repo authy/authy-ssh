@@ -5,6 +5,7 @@ AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
 UPSTREAM_URL="https://raw.github.com/authy/authy-ssh/master/authy-ssh"
+READ_TIMEOUT=60
 
 export TERM="xterm-256color"
 NORMAL=$(tput sgr0)
@@ -29,6 +30,24 @@ function debug() {
     then
         echo ">>> $*"
     fi
+}
+
+function escape_input() {
+  sed "s/[;\`\"\$\'\n ]//g" <<<$*
+}
+
+function escape_number() {
+  sed 's/[^0-9]*//g' <<< $*
+}
+
+function read_input() {
+  read -t "$READ_TIMEOUT" input
+  echo "$(escape_input $input)"
+}
+
+function read_number() {
+  read -t "$READ_TIMEOUT" number
+  echo "$(escape_number $number)"
 }
 
 function require_root() {
@@ -200,7 +219,7 @@ function check_config_file() {
 
     if [[ ! -f $CONFIG_FILE ]]
     then
-        red "Authy ssh have not been configured" # FIXME: add more info
+        red "Authy ssh has not been configured" # FIXME: add more info
         return 1
     fi
 
@@ -210,7 +229,7 @@ function check_config_file() {
         exit -1
     fi
 
-    chmod 644 $CONFIG_FILE 2>/dev/null
+    chmod 644 "$CONFIG_FILE" 2>/dev/null
     return 0
 }
 
@@ -218,7 +237,7 @@ function check_config_file() {
 #   - run: runs a shell even if the test fails.
 #   - anything else: exits the command
 function check_api_key() {
-    default_action=$1
+    default_action=$(escape_input $1)
     if [[ $AUTHY_API_KEY == "replace_me" || ! $AUTHY_API_KEY ]]
     then
         red "Cannot find a valid api key"
@@ -251,10 +270,10 @@ function read_config() {
 }
 
 function protect_user() {
-    local_user=$1
-    if [[ ! $local_user ]]
+    local_user="$(escape_input "$1")"
+    if [[ $local_user == "" ]]
     then
-      local_user=$USER
+      local_user="$USER"
     fi
 
     eval home_path="~$local_user"
@@ -269,7 +288,7 @@ function protect_user() {
     echo -n "Enter your public ssh key: "
     read ssh_key
 
-    grep "$ssh_key" $auth_keys 2>&1 >/dev/null
+    grep "$ssh_key" "$auth_keys" 2>&1 >/dev/null
     grep_exit_code=$?
     if [[ $grep_exit_code -eq 0 ]]
     then
@@ -277,7 +296,7 @@ function protect_user() {
       exit 1
     fi
 
-    register_user_on_authy $local_user
+    register_user_on_authy "$local_user"
     if [[ $? -ne 0 || ! $authy_user_id ]]
     then
       exit 1
@@ -311,33 +330,33 @@ function register_user() {
 }
 
 function register_user_on_authy() {
-    local_user=$1
-    email=$2
-    country_code=$3
-    cellphone=$4
+    local_user="$(escape_input $1)"
+    email="$(escape_input $2)"
+    country_code="$(escape_number $3)"
+    cellphone="$(escape_number $4)"
 
-    if [[ ! $local_user ]]
+    if [[ $local_user == "" ]]
     then
       echo -n "Username: "
-      read local_user
+      local_user="$(read_input)"
     fi
 
-    if [[ ! $country_code ]]
+    if [[ $country_code == "" ]]
     then
       echo -n "Your country code: "
-      read country_code
+      country_code="$(read_number)"
     fi
 
-    if [[ ! $cellphone ]]
+    if [[ $cellphone == "" ]]
     then
       echo -n "Your cellphone: "
-      read cellphone
+      cellphone="$(read_number)"
     fi
 
-    if [[ ! $email ]]
+    if [[ $email == "" ]]
     then
       echo -n "Your email: "
-      read email
+      email="$(read_input)"
     fi
 
     echo -e "
@@ -356,14 +375,14 @@ function register_user_on_authy() {
 
     url="$AUTHY_URL/protected/json/users/new?api_key=${AUTHY_API_KEY} -d user[email]=${email} -d user[country_code]=${country_code} -d user[cellphone]=${cellphone} -s"
 
-    response=`id ${local_user} 2>/dev/null`
+    response=`id "${local_user}" 2>/dev/null`
     if [[ $? -ne 0 ]]
     then
         red "$local_user was not found in your system"
         return 1
     fi
 
-    response=`curl --connect-timeout 10 ${url} 2>/dev/null`
+    response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
     ok=true
 
     debug "[register-user] url: $url response: $response curl exit stats: $?"
@@ -419,7 +438,7 @@ function find_authy_id() {
         IFS=":"; declare -a authy_user=($user)
         if [[ ${authy_user[0]} == $USER ]]
         then
-            echo ${authy_user[1]}
+            echo $(escape_number ${authy_user[1]})
             return 0
         fi
     done
@@ -428,10 +447,10 @@ function find_authy_id() {
 # login <test|login> "token" "authy-id"
 function login() {
     mode=$1
-    authy_id=$3
-    authy_token="$(sed 's/[^0-9]*//g' <<<$2)"
+    authy_token="$(escape_number $2)"
+    authy_id="$3"
 
-    if [[ ! $authy_id ]]
+    if [[ $authy_id == "" ]]
     then
       authy_id="$(find_authy_id)"
     fi
@@ -459,7 +478,7 @@ function login() {
     default_verify_action="$(read_config default_verify_action)"
     if [[ $default_verify_action == "disable" ]]
     then
-      check_response=`curl --connect-timeout 10 -s $AUTHY_URL -o /dev/null`
+      check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -o /dev/null`
       check_exit_code=$?
 
       if [[ $check_exit_code == 7 || $check_exit_code == 28 ]]
@@ -471,7 +490,8 @@ function login() {
 
     if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"success\":\"true\"* ]]
     then
-        if [[ ! $AUTHY_TOKEN ]]
+        debug "Two-factor token was accepted."
+        if [[ "$AUTHY_TOKEN" == "" ]]
         then
           green $(read_config banner)
         fi
@@ -480,6 +500,7 @@ function login() {
         then
             run_shell
         else
+            debug "Test was successful"
             exit 0
         fi
     else
@@ -488,10 +509,10 @@ function login() {
 }
 
 function request_sms() {
-    authy_id=$(find_authy_id) # read authy id that matches $USER
+    authy_id="$(find_authy_id)" # read authy id that matches $USER
     url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
 
-    response=`curl --connect-timeout 10 ${url} 2>/dev/null`
+    response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
     debug "[request sms] url: $url response: $response. curl exit stats: $?"
 
     if [[ $response == *success*sent* ]]
@@ -505,18 +526,23 @@ function request_sms() {
     fi
 }
 
-function run() {
-    mode=$1
-    authy_id=$2
+function ask_token() {
+    mode="$(escape_input $1)"
+    authy_id="$(escape_number $2)"
 
-    if [[ ! $authy_id && ! $(find_authy_id) && $mode == "test" ]] #user is not using authy, let it go
+    if [[ $authy_id == "" ]]
+    then
+      authy_id="$(find_authy_id)"
+    fi
+
+    if [[ $authy_id == "" && $mode == "test" ]] #user is not using authy, let it go
     then
       red "Cannot find authy id for $USER in $CONFIG_FILE"
       red "You have to enable it using 'authy-ssh enable'"
-      exit -1
+      exit 1
     fi
 
-    if [[ ! $(find_authy_id) ]]
+    if [[ $authy_id == "" ]]
     then
       debug "User is not protected with authy."
       run_shell # user is not protected with 2fa
@@ -530,11 +556,11 @@ function run() {
 
     for i in `seq 1 $times`
     do
-        authy_token="${AUTHY_TOKEN}"
+        authy_token="$(escape_number $AUTHY_TOKEN)"
         if [[ ! $AUTHY_TOKEN ]]
         then
           echo -n "Authy Token (type 'sms' to request a SMS token): "
-          read -t 60 authy_token
+          authy_token=$(read_input)
         fi
 
         if [ $? -ne 0 ]
@@ -545,7 +571,9 @@ function run() {
 
         case $authy_token in
             sms) request_sms ;;
-            *) login ${mode} ${authy_token} ${authy_id};;
+            *) 
+              authy_token="$(escape_number $authy_token)"
+              login "${mode}" "${authy_token}" "${authy_id}" ;;
         esac
     done
 }
@@ -576,7 +604,7 @@ cd - >/dev/null
 case $1 in
     install)
         require_root
-        install_authy $0 $2
+        install_authy "$0" "$2"
         ;;
     update)
         require_root
@@ -590,28 +618,28 @@ case $1 in
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "exit"
-        run "test"
+        ask_token "test"
         ;;
     enable|register)
         require_root
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "exit"
-        register_user $2 $3 $4 $5
+        register_user "$2" "$3" "$4" "$5"
         ;;
     login)
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key "run"
-        run "login" $2
+        ask_token "login" "$2"
         ;;
     protect)
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
-        protect_user $2
+        protect_user "$2"
         ;;
     version)
-        echo "Authy SSH v$VERSION"
+        echo "Authy SSH v${VERSION}"
         exit 0
         ;;
     *)
