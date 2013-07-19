@@ -137,7 +137,7 @@ To achieve this, delete or comment out the `ForceCommand` directive from your `s
 
 and then for each person add their ssh key using the following command:
 
-	$ bash ~/.authy-ssh/authy-ssh protect
+	$ sudo authy-ssh protect
 
 you should end up with an authorized_keys file that looks like:
 

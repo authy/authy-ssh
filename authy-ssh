@@ -251,8 +251,20 @@ function read_config() {
 }
 
 function protect_user() {
+    local_user=$1
+    if [[ ! $local_user ]]
+    then
+      local_user=$USER
+    fi
+
     eval home_path="~$local_user"
     auth_keys="${home_path}/.ssh/authorized_keys"
+
+    if [[ ! -w $home_path ]]
+    then
+      red "You don't have access to $auth_keys. Please try again as root."
+      exit 1
+    fi
 
     echo -n "Enter your public ssh key: "
     read ssh_key
@@ -265,13 +277,17 @@ function protect_user() {
       exit 1
     fi
 
-    register_user_on_authy $USER
+    register_user_on_authy $local_user
     if [[ $? -ne 0 || ! $authy_user_id ]]
     then
       exit 1
     fi
 
     echo "command=\"$COMMAND login $authy_user_id\" $ssh_key" >> "${auth_keys}"
+    if [[ $(whoami) == "root" ]]
+    then
+      chown "$local_user" "$auth_keys"
+    fi
     green "The user is now protected with authy"
 }
 
@@ -586,7 +602,7 @@ case $1 in
     protect)
         check_config_file
         AUTHY_API_KEY="$(read_config api_key)"
-        protect_user
+        protect_user $2
         ;;
     version)
         echo "Authy SSH v$VERSION"
