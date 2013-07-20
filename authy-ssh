@@ -590,7 +590,7 @@ function ask_token_and_log_user_in() {
 }
 
 function update_authy() {
-  curl"${UPSTREAM_URL}" -o /tmp/authy-ssh-new
+  curl "${UPSTREAM_URL}" -o /tmp/authy-ssh-new
   chmod 755 /tmp/authy-ssh-new
 
   echo -n "Do you want to overwrite ${COMMAND} (y/n)? "
