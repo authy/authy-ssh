@@ -2,38 +2,9 @@
 
 require 'open3'
 require 'timeout'
+require './helpers'
 
-command = "bash #{File.expand_path("../authy-ssh-test", __FILE__)}"
-ENV["DEBUG_AUTHY"] = "1"
-
-puts command
-
-def read_until(pipe, regexp)
-  data = ""
-  Timeout.timeout(10) do
-    1024.times do
-      read_data = pipe.read(1)
-      break if read_data.nil?
-
-      data << read_data
-      if data =~ regexp
-        return true
-      end
-    end
-  end
-
-  puts "\n---------"
-  puts "\t\tFailed to match #{regexp} in #{data}"
-  puts "---------"
-  return false
-rescue Timeout::Error
-  puts "\n---------"
-  puts "\t\tRead did timeout, current data is: #{data}"
-  puts "---------"
-  return false
-end
-
-Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+authy_ssh("login") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
     print "Sending invalid token: 1234"
     stdin.puts "1234"
@@ -44,10 +15,9 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   else
     puts " [FAILED]"
   end
-
 end
 
-Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+authy_ssh("login") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
     print "Sending invalid token: 1-}2$34 5'6{7"
     stdin.puts "1-}2$34 5'6{7"
@@ -60,7 +30,7 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   end
 end
 
-Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+authy_ssh("login") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
     print "Sending valid token: 0000000"
     stdin.puts "0000000"
@@ -73,7 +43,7 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   end
 end
 
-Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+authy_ssh("login") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
     print "Sending invalid token: "
     stdin.puts ""
@@ -86,7 +56,7 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   end
 end
 
-Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+authy_ssh("login") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
     print "Request SMS"
     stdin.puts "sms"
@@ -99,7 +69,7 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   end
 end
 
-Open3.popen2e("#{command} update") do |stdin, stdout, wait|
+authy_ssh("update") do |stdin, stdout|
   print "Run update without root"
   if read_until(stdout, /root permisisons are required to run this command/i)
     puts " [OK]"
@@ -107,7 +77,4 @@ Open3.popen2e("#{command} update") do |stdin, stdout, wait|
     puts " [FAILED]"
   end
 end
-
-
-
 
