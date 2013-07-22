@@ -153,6 +153,10 @@ function install_authy() {
         2)
           default_verify_action="enforce"
           ;;
+        *)
+          red "you have entered an invalid option"
+          return $FAIL
+          ;;
       esac
 
       yellow "Generating initial config on ${config_file}..."
@@ -609,7 +613,7 @@ require_curl
 
 # get the absolute path to the command
 cd `dirname $0`
-COMMAND="$PWD/`basename $0`" 
+COMMAND="$PWD/`basename $0`"
 cd - >/dev/null
 
 case $1 in
