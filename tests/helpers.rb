@@ -30,8 +30,8 @@ rescue Timeout::Error
   return false
 end
 
-def authy_ssh(subcommnand, &block)
-  Open3.popen2e("#{AUTHY_COMMAND} #{subcommnand}") do |stdin, stdout, wait|
+def authy_ssh(subcommnand, env = {}, &block)
+  Open3.popen2e(env, "#{AUTHY_COMMAND} #{subcommnand}") do |stdin, stdout, wait|
     block.call(stdin, stdout)
   end
 end
