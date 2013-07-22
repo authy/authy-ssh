@@ -15,10 +15,10 @@ authy_ssh("login") do |stdin, stdout|
   end
 end
 
-authy_ssh("login") do |stdin, stdout|
+authy_ssh("login", "mode" => "test", "authy_token" => "32|21") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
-    print "Sending invalid token: 1-}2$34 5'6{7"
-    stdin.puts "1-}2$34 5'6{7"
+    print "Sending invalid token: #1-}2$34 5'6{7"
+    stdin.puts "#1-}2$34 5'6{7"
   end
 
   if read_until(stdout, /Logging 2 with 1234567 in login mode./i)
@@ -27,6 +27,16 @@ authy_ssh("login") do |stdin, stdout|
     red " [FAILED]"
   end
 end
+
+authy_ssh("login", "AUTHY_TOKEN" => "32|21") do |stdin, stdout|
+  print "Loging in using the AUTHY_TOKEN env var"
+  if read_until(stdout, /Logging 2 with 3221 in login mode./i)
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+end
+
 
 authy_ssh("login") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
