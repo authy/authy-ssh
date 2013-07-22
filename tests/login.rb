@@ -58,9 +58,7 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   else
     puts " [FAILED]"
   end
-
 end
-
 
 Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   if read_until(stdout, /Authy Token/)
@@ -73,7 +71,41 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   else
     puts " [FAILED]"
   end
+end
 
+Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+  if read_until(stdout, /Authy Token/)
+    print "Sending invalid token: "
+    stdin.puts ""
+  end
+
+  if read_until(stdout, /You have to enter only digits/i)
+    puts " [OK]"
+  else
+    puts " [FAILED]"
+  end
+end
+
+Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+  if read_until(stdout, /Authy Token/)
+    print "Request SMS"
+    stdin.puts "sms"
+  end
+
+  if read_until(stdout, /SMS is not enabled on Sandbox accounts./i)
+    puts " [OK]"
+  else
+    puts " [FAILED]"
+  end
+end
+
+Open3.popen2e("#{command} update") do |stdin, stdout, wait|
+  print "Run update without root"
+  if read_until(stdout, /root permisisons are required to run this command/i)
+    puts " [OK]"
+  else
+    puts " [FAILED]"
+  end
 end
 
 
