@@ -4,10 +4,11 @@ desc "Prepare tests"
 task :prepare do
   script = File.read(APP_PATH)
   script.gsub!("https://api.authy.com", "http://sandbox-api.authy.com")
+  script.gsub!("$APP_ROOT/authy-ssh.conf", "$APP_ROOT/authy-ssh-test.conf")
 
   File.write("authy-ssh-test", script)
 
-  File.write("authy-ssh.conf", %@
+  File.write("authy-ssh-test.conf", %@
 banner=Logged in for testing
 api_key=0cd08abec2e9b9641e40e9470a7fc336
 default_verify_action=disable
