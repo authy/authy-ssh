@@ -1,7 +1,5 @@
 #!/usr/bin/env ruby
 
-require 'open3'
-require 'timeout'
 require './helpers'
 
 authy_ssh("login") do |stdin, stdout|
@@ -63,15 +61,6 @@ authy_ssh("login") do |stdin, stdout|
   end
 
   if read_until(stdout, /SMS is not enabled on Sandbox accounts./i)
-    puts " [OK]"
-  else
-    puts " [FAILED]"
-  end
-end
-
-authy_ssh("update") do |stdin, stdout|
-  print "Run update without root"
-  if read_until(stdout, /root permisisons are required to run this command/i)
     puts " [OK]"
   else
     puts " [FAILED]"

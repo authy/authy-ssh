@@ -15,3 +15,14 @@ user=#{ENV["USER"]}:2
 @)
 end
 
+
+desc "Run tests"
+task :test => [:prepare] do
+  Dir.glob("test_*.rb") do |test_file|
+    target = test_file.match("test_(.*)\.rb")[1].to_s.capitalize
+
+    puts "=> Testing #{target} command..."
+    system("ruby #{test_file}")
+    puts ""
+  end
+end
