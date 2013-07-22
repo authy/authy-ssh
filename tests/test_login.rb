@@ -9,9 +9,9 @@ authy_ssh("login") do |stdin, stdout|
   end
 
   if read_until(stdout, /Invalid token/i)
-    puts " [OK]"
+    green " [OK]"
   else
-    puts " [FAILED]"
+    red " [FAILED]"
   end
 end
 
@@ -21,10 +21,10 @@ authy_ssh("login") do |stdin, stdout|
     stdin.puts "1-}2$34 5'6{7"
   end
 
-  if read_until(stdout, /Logging \d+ with 1234567 in login mode./i)
-    puts " [OK]"
+  if read_until(stdout, /Logging 2 with 1234567 in login mode./i)
+    green " [OK]"
   else
-    puts " [FAILED]"
+    red " [FAILED]"
   end
 end
 
@@ -35,9 +35,9 @@ authy_ssh("login") do |stdin, stdout|
   end
 
   if read_until(stdout, /Logged in for testing/i)
-    puts " [OK]"
+    green " [OK]"
   else
-    puts " [FAILED]"
+    red " [FAILED]"
   end
 end
 
@@ -48,9 +48,9 @@ authy_ssh("login") do |stdin, stdout|
   end
 
   if read_until(stdout, /You have to enter only digits/i)
-    puts " [OK]"
+    green " [OK]"
   else
-    puts " [FAILED]"
+    red " [FAILED]"
   end
 end
 
@@ -61,9 +61,9 @@ authy_ssh("login") do |stdin, stdout|
   end
 
   if read_until(stdout, /SMS is not enabled on Sandbox accounts./i)
-    puts " [OK]"
+    green " [OK]"
   else
-    puts " [FAILED]"
+    red " [FAILED]"
   end
 end
 

@@ -18,20 +18,39 @@ def read_until(pipe, regexp)
     end
   end
 
-  puts "\n---------"
-  puts "\t\tFailed to match #{regexp} in #{data}"
-  puts "---------"
+  red "\n---------"
+  red "  Failed to match #{regexp} in #{data}"
+  red "---------"
   return false
 rescue Timeout::Error
-  puts "\n---------"
-  puts "\t\tRead did timeout, current data is: #{data}"
-  puts "---------"
+  red "\n---------"
+  red "  Read did timeout, current data is: #{data}"
+  red "---------"
   return false
 end
 
 def authy_ssh(subcommnand, &block)
   Open3.popen2e("#{AUTHY_COMMAND} #{subcommnand}") do |stdin, stdout, wait|
     block.call(stdin, stdout)
+  end
+end
+
+
+module Kernel
+  def colorize(text, color_code)
+    "#{color_code}#{text}\e[0m"
+  end
+
+  def red(text)
+    puts colorize(text, "\e[31m")
+  end
+
+  def green(text)
+    puts colorize(text, "\e[32m")
+  end
+
+  def yellow(text)
+    puts colorize(text, "\e[33m")
   end
 end
 
