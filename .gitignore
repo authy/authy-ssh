@@ -1,1 +1,3 @@
 .DS_Store
+tests/authy-ssh-test
+tests/authy-ssh.conf

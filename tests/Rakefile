@@ -1,0 +1,17 @@
+APP_PATH = File.expand_path("../../authy-ssh", __FILE__)
+
+desc "Prepare tests"
+task :prepare do
+  script = File.read(APP_PATH)
+  script.gsub!("https://api.authy.com", "http://sandbox-api.authy.com")
+
+  File.write("authy-ssh-test", script)
+
+  File.write("authy-ssh.conf", %@
+banner=Logged in for testing
+api_key=0cd08abec2e9b9641e40e9470a7fc336
+default_verify_action=disable
+user=#{ENV["USER"]}:2
+@)
+end
+

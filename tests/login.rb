@@ -3,28 +3,32 @@
 require 'open3'
 require 'timeout'
 
-command=File.expand_path("../../authy-ssh", __FILE__)
+command = "bash #{File.expand_path("../authy-ssh-test", __FILE__)}"
 ENV["DEBUG_AUTHY"] = "1"
+
+puts command
 
 def read_until(pipe, regexp)
   data = ""
   Timeout.timeout(10) do
-    50.times do
-      data << pipe.read(10)
+    1024.times do
+      read_data = pipe.read(1)
+      break if read_data.nil?
 
+      data << read_data
       if data =~ regexp
         return true
       end
     end
   end
 
-  puts "---------"
-  puts "Failed to match #{regexp} in #{data}"
+  puts "\n---------"
+  puts "\t\tFailed to match #{regexp} in #{data}"
   puts "---------"
   return false
 rescue Timeout::Error
-  puts "---------"
-  puts "Read did timeout, current data is: #{data}"
+  puts "\n---------"
+  puts "\t\tRead did timeout, current data is: #{data}"
   puts "---------"
   return false
 end
@@ -50,6 +54,21 @@ Open3.popen2e("#{command} login") do |stdin, stdout, wait|
   end
 
   if read_until(stdout, /Logging \d+ with 1234567 in login mode./i)
+    puts " [OK]"
+  else
+    puts " [FAILED]"
+  end
+
+end
+
+
+Open3.popen2e("#{command} login") do |stdin, stdout, wait|
+  if read_until(stdout, /Authy Token/)
+    print "Sending valid token: 0000000"
+    stdin.puts "0000000"
+  end
+
+  if read_until(stdout, /Logged in for testing/i)
     puts " [OK]"
   else
     puts " [FAILED]"
