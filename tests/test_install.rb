@@ -83,7 +83,7 @@ authy_ssh("install .", {}, true) do |stdin, stdout|
     stdin.puts "9"
   end
 
-  if read_until(stdout, /you have entered a invalid option/i)
+  if read_until(stdout, /you have entered an invalid option/i)
     green " [ok]"
   else
     red " [FAILED]"
