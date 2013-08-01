@@ -8,7 +8,7 @@
 
 Type the following command in the terminal:
 
-    $ curl 'https://raw.github.com/authy/authy-ssh/master/authy-ssh' -o authy-ssh
+    $ curl -O 'https://raw.github.com/authy/authy-ssh/master/authy-ssh'
     $ sudo bash authy-ssh install /usr/local/bin
 
 Then enable two-factor for your user:
