@@ -594,17 +594,18 @@ function ask_token_and_log_user_in() {
 }
 
 function update_authy() {
-  curl "${UPSTREAM_URL}" -o /tmp/authy-ssh-new
-  chmod 755 /tmp/authy-ssh-new
+  temp_file="$(mktemp)"
+  curl "${UPSTREAM_URL}" -o "$temp_file"
+  chmod 755 "$temp_file"
 
   echo -n "Do you want to overwrite ${COMMAND} (y/n)? "
   read opt
   if [[ "$opt" == "y" ]]
   then
-    mv /tmp/authy-ssh-new ${COMMAND}
+    mv "${temp_file}" "${COMMAND}"
     green "Now type authy-ssh test to verify everything is working."
   else
-    rm /tmp/authy-ssh-new
+    rm "${temp_file}"
     yellow "Authy SSH was not updated."
   fi
 }
