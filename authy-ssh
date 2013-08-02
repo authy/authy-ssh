@@ -425,7 +425,7 @@ function register_user_on_authy() {
 }
 
 function run_shell() {
-    if [ $SSH_ORIGINAL_COMMAND ] # when user runs: ssh server <command>
+    if [[ "$SSH_ORIGINAL_COMMAND" != "" ]] # when user runs: ssh server <command>
     then
         debug "running command: $SSH_ORIGINAL_COMMAND"
         exec /bin/bash -c "${SSH_ORIGINAL_COMMAND}"
