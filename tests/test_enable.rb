@@ -4,7 +4,7 @@ require './helpers'
 
 authy_ssh("enable #{ENV["USER"]}") do |stdin, stdout|
   print "Run command without root"
-  if read_until(stdout, /root permisisons are required to run this command/i)
+  if read_until(stdout, /root permissions are required to run this command/i)
     green " [OK]"
   else
     red " [FAILED]"

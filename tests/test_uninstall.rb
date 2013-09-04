@@ -3,7 +3,7 @@
 require './helpers'
 
 authy_ssh("uninstall") do |stdin, stdout|
-  if read_until(stdout, /root permisisons are required to run this command/i)
+  if read_until(stdout, /root permissions are required to run this command/i)
     print "Run uninstall without root"
     green " [OK]"
   else
