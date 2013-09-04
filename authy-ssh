@@ -58,7 +58,7 @@ function require_root() {
     find_sshd_config
     if [[ ! -w $SSHD_CONFIG ]]
     then
-      red "root permisisons are required to run this command. try again using sudo"
+      red "root permissions are required to run this command. try again using sudo"
       exit $FAIL
     fi
 }
