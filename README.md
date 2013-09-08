@@ -65,7 +65,7 @@ Whenever  it  runs authy-ssh will read it's configuration from /usr/local/bin/au
 Here's an example:
 
     [root@ip-10-2-113-233 ~]# cat /usr/local/bin/authy-ssh.conf 
-    banner=Good job! You've securely log-in with Authy.
+    banner=Good job! You've securely logged in with Authy.
     api_key=05c783f2db87b73b198f11fe45dd8bfb
     user=root:1
     user=daniel:1
