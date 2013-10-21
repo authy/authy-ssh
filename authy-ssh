@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.2"
+VERSION="1.3"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
