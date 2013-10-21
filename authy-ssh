@@ -619,7 +619,6 @@ cd - >/dev/null
 
 case $1 in
     install)
-        require_root
         install_authy "$0" "$2"
         ;;
     update)
