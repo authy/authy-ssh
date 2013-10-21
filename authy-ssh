@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 VERSION="1.2"
 AUTHY_URL="https://api.authy.com"
