@@ -2,9 +2,14 @@
 
 require './helpers'
 
-authy_ssh("install") do |stdin, stdout|
-  print "Run install without root"
-  if read_until(stdout, /root permissions are required to run this command/i)
+authy_ssh("install .") do |stdin, stdout|
+  if read_until(stdout, /Enter the Authy API key/i)
+    print "Installing as normal user"
+    stdin.puts ""
+  end
+
+  if read_until(stdout, /you have entered a wrong API key/i)
+    system("rm authy-ssh")
     green " [OK]"
   else
     red " [FAILED]"
