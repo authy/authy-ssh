@@ -115,6 +115,13 @@ function install_authy() {
     fi
     config_file="${dest}.conf"
 
+	#
+	# Ensure our target directory is present
+	#
+	set -e
+	mkdir -p `dirname $dest`
+	set +e
+	
     if [[ ! -r `dirname $dest` ]]
     then
       red "${dest} is not writable. Try again using sudo"
