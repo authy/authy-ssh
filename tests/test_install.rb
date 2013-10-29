@@ -16,6 +16,23 @@ authy_ssh("install .") do |stdin, stdout|
   end
 end
 
+FileUtils.rm_rf("target_dir")
+authy_ssh("install target_dir/bin") do |stdin, stdout|
+  if read_until(stdout, /Enter the Authy API key/i)
+    print "Installing on a new dir"
+    stdin.puts ""
+  end
+
+  if File.directory?("target_dir")
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+
+  FileUtils.rm_rf("target_dir")
+  FileUtils.rm_rf("authy-ssh")
+end
+
 authy_ssh("install .", {}, true) do |stdin, stdout|
   if read_until(stdout, /Enter the Authy API key/i)
     print "Sending an empty API key"
@@ -89,7 +106,7 @@ authy_ssh("install .", {}, true) do |stdin, stdout|
   end
 
   if read_until(stdout, /you have entered an invalid option/i)
-    green " [ok]"
+    green " [OK]"
   else
     red " [FAILED]"
   end
