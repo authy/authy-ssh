@@ -146,6 +146,15 @@ you should end up with an authorized_keys file that looks like:
 
 The previous command will ask you the user ssh public key, cellphone and email.
 
+## Disable when both on private network.
+
+Append at end of your `/etc/ssh/sshd_config` file these lines:
+
+    Match Address 10.10.0.0/24
+        ForceCommand /usr/local/bin/authy-ssh shell
+
+More about `Match` you can read [here](http://manpages.ubuntu.com/manpages/lucid/man5/sshd_config.5.html).
+
 ## Uninstall
 
 To uninstall type:

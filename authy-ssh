@@ -660,6 +660,9 @@ case $1 in
         AUTHY_API_KEY="$(read_config api_key)"
         protect_user "$2"
         ;;
+    shell)
+        run_shell
+        ;;
     version)
         echo "Authy SSH v${VERSION}"
         exit 0
