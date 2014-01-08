@@ -56,11 +56,11 @@ Now protect your user:
 
 ## How it works
 
-Authy-ssh uses the sshd_config directive ForceCommand to run itself before every login. Here's how your sshd_config will look after installing:
+Authy-ssh uses the `sshd_config` directive `ForceCommand` to run itself before every login. Here's how your sshd_config will look after installing:
 
     [root@ip-10-2-113-233 ~]# cat  /etc/ssh/sshd_config | grep ForceCommand
     ForceCommand /usr/local/bin/authy-ssh login
-
+]
 Whenever  it  runs authy-ssh will read it's configuration from /usr/local/bin/authy-ssh.conf
 Here's an example:
 
@@ -70,13 +70,13 @@ Here's an example:
     user=root:1
     user=daniel:1
 
-In this case it means user root and daniel have two-factor enabled and that 1 is their  authy_id. If a user is not in this list, authy-ssh will automatically let him in.
+In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in.
 
 ## Using two-factor auth with automated deployment tools.
 
 
-If you use **capybara**, **chef**, **puppet**, **cfengine**, **git** you can create new users for this tools so they can enter the machine without requiring two-factor.
-Alternatively, you can user match on the ForceCommand
+If you use **capybara**, **chef**, **puppet**, **cfengine**, **git** you can create new users for these tools so they can enter the machine without requiring two-factor.
+Alternatively, you can match users using the `ForceCommand` directive.
 
 A good example is create a two-factor users group.
 
