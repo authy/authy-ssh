@@ -18,9 +18,9 @@ Then enable two-factor for your user:
 Test everything is working:
 
     $ authy-ssh test
-    
+
 Restart your SSH server (look below if you are not on Ubuntu).
-    
+
     $ sudo service ssh restart
 
 ##### Restarting your ssh server
@@ -32,22 +32,22 @@ Restart your SSH server (look below if you are not on Ubuntu).
 **Debian**
 
     sudo /etc/init.d/sshd restart
-    
+
 **RedHat and Fedora Core Linux**
 
     sudo /sbin/service sshd restart
-    
+
 **Suse linux**
-    
+
     sudo /etc/rc.d/sshd restart
-    
+
 ###  Installing without root privileges.
 
 Type the following command in the terminal:
 
     $ curl 'https://raw.github.com/authy/authy-ssh/master/authy-ssh' -o authy-ssh
     $ bash authy-ssh install ~/.authy-ssh/
-    
+
 
 Now protect your user:
 
@@ -64,15 +64,15 @@ Authy-ssh uses the sshd_config directive ForceCommand to run itself before every
 Whenever  it  runs authy-ssh will read it's configuration from /usr/local/bin/authy-ssh.conf
 Here's an example:
 
-    [root@ip-10-2-113-233 ~]# cat /usr/local/bin/authy-ssh.conf 
+    [root@ip-10-2-113-233 ~]# cat /usr/local/bin/authy-ssh.conf
     banner=Good job! You've securely logged in with Authy.
     api_key=05c783f2db87b73b198f11fe45dd8bfb
     user=root:1
     user=daniel:1
-    
+
 In this case it means user root and daniel have two-factor enabled and that 1 is their  authy_id. If a user is not in this list, authy-ssh will automatically let him in.
 
-## Using two-factor auth with automated deployment tools. 
+## Using two-factor auth with automated deployment tools.
 
 
 If you use **capybara**, **chef**, **puppet**, **cfengine**, **git** you can create new users for this tools so they can enter the machine without requiring two-factor.
@@ -81,7 +81,7 @@ Alternatively, you can user match on the ForceCommand
 A good example is create a two-factor users group.
 
     groupadd two-factor
-    usermod  -a -G two-factor root 
+    usermod  -a -G two-factor root
 
 Now that my root user is in the two-factor group, I edit my /etc/ssh/sshd_config
 
@@ -104,7 +104,7 @@ To enable users type the following command and fill the form:
 
 If you want to do it in one line just type:
 
-	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> 
+	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>
 
 
 ## `scp`, `mosh` and `git push` with two-factor authentication.
