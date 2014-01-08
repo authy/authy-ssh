@@ -107,9 +107,9 @@ If you want to do it in one line just type:
 	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> 
 
 
-## `scp`, 'mosh' and `git push` with two-factor authentication.
+## `scp`, `mosh` and `git push` with two-factor authentication.
 
-To enable non-interactive commands like `scp`, 'mosh' and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
+To enable non-interactive commands like `scp`, `mosh` and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
 
 	AcceptEnv AUTHY_TOKEN
 
@@ -121,13 +121,7 @@ Then configure the client to send that variable to the server, to do so first op
 And finally pass the token before the command:
 
     AUTHY_TOKEN="valid-token" git push origin master
-    
-or
-
     AUTHY_TOKEN="valid-token" scp server:path/to/file local-file
-
-or
-
     AUTHY_TOKEN="valid-token" mosh server
 
 
