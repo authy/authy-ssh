@@ -527,7 +527,7 @@ function login() {
 }
 
 function request_sms() {
-    authy_id="$(find_authy_id)" # read authy id that matches $USER
+    authy_id="$(escape_number $1)"
     url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
 
     response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
@@ -589,7 +589,7 @@ function ask_token_and_log_user_in() {
         fi
 
         case $authy_token in
-            sms) request_sms ;;
+            sms) request_sms "${authy_id}" ;;
             *)
               authy_token="$(escape_number $authy_token)"
               login "${mode}" "${authy_token}" "${authy_id}"
