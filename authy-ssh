@@ -267,14 +267,16 @@ function read_config() {
 
     if [[ -f $CONFIG_FILE ]]
     then
+        KEYFOUND=$FAIL
         while IFS='=' read -r ckey value
         do
             if [[ $ckey == $key ]]
             then
                 echo $value # don't stop the loop so we can read repeated keys
+                KEYFOUND=$OK
             fi
         done < $CONFIG_FILE
-        return $OK
+        return $KEYFOUND
     fi
 
     red "ERROR: $config_file couldn't be found"
@@ -509,7 +511,11 @@ function login() {
         debug "Two-factor token was accepted."
         if [[ "$AUTHY_TOKEN" == "" ]]
         then
-            green $(read_config banner)
+            banner_text=$(read_config banner)
+            if [[ $? == $OK ]];
+            then
+                green $banner_text
+            fi
         fi
 
         if [[ $mode != "test" ]]
