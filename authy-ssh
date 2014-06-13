@@ -380,9 +380,13 @@ function register_user() {
   fi
 
   grace_time="$(escape_number $5)"
-  if ! [[ $grace_time =~ ^-?[0-9]+$ ]]
+  if [ -z $grace_time ]
   then
       grace_time=-1
+  elif ! [[ $grace_time =~ ^(-1|[0-9]+)$ ]]
+  then
+      yellow "grace-time is invalid"
+      exit $FAIL
   fi
   
   if [[ $authy_user_id && $grace_time ]]
