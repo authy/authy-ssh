@@ -13,7 +13,7 @@ Type the following command in the terminal:
 
 Then enable two-factor for your user:
 
-    $ sudo /usr/local/bin/authy-ssh enable `whoami` <your-email> <your-country-code> <your-cellphone>
+    $ sudo /usr/local/bin/authy-ssh enable `whoami` <your-email> <your-country-code> <your-cellphone> [grace-period]
 
 Test everything is working:
 
@@ -67,10 +67,12 @@ Here's an example:
     [root@ip-10-2-113-233 ~]# cat /usr/local/bin/authy-ssh.conf
     banner=Good job! You've securely logged in with Authy.
     api_key=05c783f2db87b73b198f11fe45dd8bfb
-    user=root:1
-    user=daniel:1
+    user=root:1:-1
+    user=daniel:1:300
 
-In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in.
+In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in. 
+The user daniel has an optional `grace-period` of 300 seconds, allowing them to open a new session within 5 minutes of the last successful login without requiring two-factor authentication.
+On the other hand, the root user uses the default `grace-period` of -1, requiring all sessions to use two-factor authentication, regardless of recent successful logins.
 
 ## Using two-factor auth with automated deployment tools.
 
@@ -104,7 +106,7 @@ To enable users type the following command and fill the form:
 
 If you want to do it in one line just type:
 
-	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>
+	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> [grace-period]
 
 
 ## `scp`, `mosh` and `git push` with two-factor authentication.
@@ -139,8 +141,8 @@ and then for each person add their ssh key using the following command:
 
 you should end up with an authorized_keys file that looks like:
 
-	command="/usr/local/bin/authy-ssh login 13386" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDGRJbWu+WLVXYVADY3iQPE1kA7CIOSqHmskPM8qIAzKzq+1eRdmPwDZNmAvIQnN/0N7317Rt1bmTRLBwhl6vfSgL6677vUwsevPo27tIxdja67ELTh55xVLcJ3O8x2qkZsySgkLP/n+w3MUwLe1ht31AZOAsV7J7imhWipDijiysNgvHyeSWsHqExaL1blPOYJVHcqPbKY4SxFRq/MWeyPf/Sm24MFSKEaY6u0kNx8MLJ1X9X/YxmY9rdvzsZdQ7Z/PYhYt2Ja/0mzfYx2leeP2JQBsVfZZzAoFEPpw6mSP9kJREGe2tXvS9cRenhz/+V0+mvSJKG0f0Zzh428pTzN
-	command="/usr/local/bin/authy-ssh login 20" ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyvj2d0rSDukDT04mK7njUxtXffUrOnDCm2Bqub0zN7LQS733nBHp89aMuBI5ENjw1SQ2qXhLxvK1Xhr0pQr+dOWNn3emQjQuiA+YL39yp2RLLpflerJ3KAVY09CHYLFxdKj/DJgXsH+LMAPe2uVmWCP2xAV5ZcLnz3CdS2SX/EVlbNrftesZx9uAbmwKPLY1pmW7q/75AhJRow8VTP7zM/VS7jEHkj03g51BZGB8tMI3G8RDVEDtu2jVwZiq+8BaNCyjYVlsLfu6uGhnXeeUS3swu/atlt+pxy+QTf/HGvrJR58tER+foqheWtV3LqXN4oLckzqTVkDDmnNJlmrpYQ==
+	command="/usr/local/bin/authy-ssh login 13386 -1" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDGRJbWu+WLVXYVADY3iQPE1kA7CIOSqHmskPM8qIAzKzq+1eRdmPwDZNmAvIQnN/0N7317Rt1bmTRLBwhl6vfSgL6677vUwsevPo27tIxdja67ELTh55xVLcJ3O8x2qkZsySgkLP/n+w3MUwLe1ht31AZOAsV7J7imhWipDijiysNgvHyeSWsHqExaL1blPOYJVHcqPbKY4SxFRq/MWeyPf/Sm24MFSKEaY6u0kNx8MLJ1X9X/YxmY9rdvzsZdQ7Z/PYhYt2Ja/0mzfYx2leeP2JQBsVfZZzAoFEPpw6mSP9kJREGe2tXvS9cRenhz/+V0+mvSJKG0f0Zzh428pTzN
+	command="/usr/local/bin/authy-ssh login 20 300" ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyvj2d0rSDukDT04mK7njUxtXffUrOnDCm2Bqub0zN7LQS733nBHp89aMuBI5ENjw1SQ2qXhLxvK1Xhr0pQr+dOWNn3emQjQuiA+YL39yp2RLLpflerJ3KAVY09CHYLFxdKj/DJgXsH+LMAPe2uVmWCP2xAV5ZcLnz3CdS2SX/EVlbNrftesZx9uAbmwKPLY1pmW7q/75AhJRow8VTP7zM/VS7jEHkj03g51BZGB8tMI3G8RDVEDtu2jVwZiq+8BaNCyjYVlsLfu6uGhnXeeUS3swu/atlt+pxy+QTf/HGvrJR58tER+foqheWtV3LqXN4oLckzqTVkDDmnNJlmrpYQ==
 
 The previous command will ask you the user ssh public key, cellphone and email.
 
