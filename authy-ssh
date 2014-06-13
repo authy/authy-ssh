@@ -4,6 +4,7 @@ VERSION="1.4"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
+LAST_LOGIN_FILE="$HOME/.authy-last-login"
 UPSTREAM_URL="https://raw.github.com/authy/authy-ssh/master/authy-ssh"
 READ_TIMEOUT=60
 
@@ -40,7 +41,7 @@ function escape_input() {
 }
 
 function escape_number() {
-  sed 's/[^0-9]*//g' <<< $*
+  sed 's/^-?[0-9]*//g' <<< $*
 }
 
 function read_input() {
@@ -51,6 +52,18 @@ function read_input() {
 function read_number() {
   read -t "$READ_TIMEOUT" number
   echo "$(escape_number $number)"
+}
+
+function get_date() {
+  echo "$(date +%s)"
+}
+
+function update_last_login() {
+  echo "$USER|$(get_date)|$(get_ssh_client_ip)" > $LAST_LOGIN_FILE
+}
+
+function get_ssh_client_ip() {
+  echo "$(echo $SSH_CLIENT | awk '{ print $1}')"
 }
 
 function require_root() {
@@ -183,16 +196,20 @@ function install_authy() {
 
     if [[ $SUDO_USER ]]
     then
-      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-numeric-country-code> <your-cellphone>"
-      green "   Example: sudo $0 enable $SUDO_USER myuser@example.com 1 401-390-9987"
+      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-numeric-country-code> <your-cellphone> [grace-time]"
+      green "   Example: sudo $0 enable $SUDO_USER myuser@example.com 1 401-390-9987 -1"
     else
-      green "   sudo ${dest} enable $USER <your-email> <your-numeric-country-code> <your-cellphone>"
-      green "   Example: sudo $0 enable $USER myuser@example.com 1 401-390-9987"
+      green "   sudo ${dest} enable $USER <your-email> <your-numeric-country-code> <your-cellphone> [grace-time]"
+      green "   Example: sudo $0 enable $USER myuser@example.com 1 401-390-9987 -1"
     fi
     echo ""
     echo "To enable two-factor authentication on user account type: "
     echo ""
-    green "   sudo ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>"
+    green "   sudo ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> [grace-time]"
+    echo ""
+    echo "Where grace-time, optionally, specify the number of seconds two-factor authentication will not be"
+    echo "  required for creating a new session, after a successful login, from the same user and IP address."
+    echo "  Using the value of -1 will always require two-factor authentication and is the default if not specified."
     echo ""
     echo "To uninstall Authy SSH type:"
     echo ""
@@ -261,6 +278,34 @@ function check_api_key() {
     return $OK
 }
 
+function check_grace_period() {
+    # check if we have a last login file
+    if [[ -f "$LAST_LOGIN_FILE" ]]
+    then
+        # read in the last_login file, don't use colons: ipv6!
+        IFS="|"; declare -a last_login=($(head -n 1 "$LAST_LOGIN_FILE"))
+        # if the user in the file is current user and the IP matches
+        if [[ ${last_login[0]} == $USER && ${last_login[2]} == $(get_ssh_client_ip) ]]
+        then
+            # read in the user config
+            for user in `read_config user`
+            do
+                IFS=":"; declare -a authy_user=($user)
+                # for this user, check if it has a grace period
+                if [[ ${authy_user[0]} == $USER && ${#authy_user[@]} -gt 2 && $(escape_number ${authy_user[2]}) -gt -1 ]]
+                then
+                    # if last login time plus grace period is less than current time
+                    if [[ $(($(escape_number ${last_login[1]}) + $(escape_number ${authy_user[2]}))) -ge $(escape_number $(get_date)) ]]
+                    then
+                        return $OK
+                    fi
+                fi
+            done
+        fi        
+    fi
+    return $FAIL
+}
+
 # Usage: $(read_config banner)
 function read_config() {
     key="$1"
@@ -325,7 +370,7 @@ function protect_user() {
     green "The user is now protected with authy"
 }
 
-# usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>"
+# usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>" "<grace-time>"
 function register_user() {
   register_user_on_authy $*
 
@@ -334,9 +379,15 @@ function register_user() {
       exit $FAIL
   fi
 
-  if [[ $authy_user_id ]]
+  grace_time="$(escape_number $5)"
+  if ! [[ $grace_time =~ ^-?[0-9]+$ ]]
   then
-      echo "user=$local_user:$authy_user_id" >> $CONFIG_FILE
+      grace_time=-1
+  fi
+  
+  if [[ $authy_user_id && $grace_time ]]
+  then
+      echo "user=$local_user:$authy_user_id:$grace_time" >> $CONFIG_FILE
       green "User was registered"
   else
       red "Cannot register user: $response"
@@ -518,6 +569,8 @@ function login() {
             fi
         fi
 
+        update_last_login
+        
         if [[ $mode != "test" ]]
         then
             run_shell
@@ -577,6 +630,14 @@ function ask_token_and_log_user_in() {
     if [[ $AUTHY_TOKEN ]] # env var
     then
       times=1
+    fi
+    
+    check_grace_period
+    if [[ $? == $OK ]]
+    then
+      debug "Grace period allowed"
+      update_last_login
+      run_shell
     fi
 
     for i in `seq 1 $times`
@@ -653,7 +714,7 @@ case $1 in
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key
-        register_user "$2" "$3" "$4" "$5"
+        register_user "$2" "$3" "$4" "$5" "$6"
         ;;
     login)
         check_config_file
@@ -699,9 +760,19 @@ Available commands:
     enable
         receives a list of arguments needed to register a user. usage:
 
-        sudo $0 enable [local-user] [email] [numeric country code] [cellphone]
+        sudo $0 enable [local-user] [email] [numeric country code] [cellphone] <grace time>
 
-        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987
+        Where grace-time, optionally, specifies the number of seconds two-factor authentication will not be
+        required for creating a new session, after a successful login, from the same user and IP address.
+        Using the value of -1 will always require two-factor authentication and is the default if not specified.
+
+        Always require two-factor authentication:
+
+        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987 -1
+
+        Allow 300 seconds after a successful login before requiring two-factor authentication again:
+
+        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987 300
 
     protect
         installs authy-ssh for the given user
