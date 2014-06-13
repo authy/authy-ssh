@@ -13,7 +13,7 @@ Type the following command in the terminal:
 
 Then enable two-factor for your user:
 
-    $ sudo /usr/local/bin/authy-ssh enable `whoami` <your-email> <your-country-code> <your-cellphone>
+    $ sudo /usr/local/bin/authy-ssh enable `whoami` <your-email> <your-country-code> <your-cellphone> [grace-time]
 
 Test everything is working:
 
@@ -67,10 +67,12 @@ Here's an example:
     [root@ip-10-2-113-233 ~]# cat /usr/local/bin/authy-ssh.conf
     banner=Good job! You've securely logged in with Authy.
     api_key=05c783f2db87b73b198f11fe45dd8bfb
-    user=root:1
-    user=daniel:1
+    user=root:1:-1
+    user=daniel:1:300
 
-In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in.
+In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in. 
+The user daniel has an optional `grace-time` of 300 seconds, allowing them to open a new session within 5 minutes of the last successful login without requiring two-factor authentication.
+On the other hand, the root user uses the default `grace-time` of -1, requiring all sessions to use two-factor authentication, regardless of recent successful logins.
 
 ## Using two-factor auth with automated deployment tools.
 
@@ -104,7 +106,7 @@ To enable users type the following command and fill the form:
 
 If you want to do it in one line just type:
 
-	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>
+	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> [grace-time]
 
 
 ## `scp`, `mosh` and `git push` with two-factor authentication.
