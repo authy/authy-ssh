@@ -80,3 +80,31 @@ authy_ssh("enable #{ENV["USER"]} 'test;;;@authy.com' '1|}+)(&%' '111;|};111#-/:1
     red " [FAILED]"
   end
 end
+
+authy_ssh("enable #{ENV["USER"]} 'test;;;@authy.com' '1|}+)(&%' '111;|};111#-/:1111' aaa", {}, true) do |stdin, stdout|
+
+  if read_until(stdout, /Do you want to enable this user/i)
+    stdin.puts "y"
+  end
+
+  if read_until(stdout, /grace-time is invalid/i)
+    print "Setting an invalid grace-time: aaa"
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+end
+
+authy_ssh("enable #{ENV["USER"]} 'test;;;@authy.com' '1|}+)(&%' '111;|};111#-/:1111' -2", {}, true) do |stdin, stdout|
+
+  if read_until(stdout, /Do you want to enable this user/i)
+    stdin.puts "y"
+  end
+
+  if read_until(stdout, /grace-time is invalid/i)
+    print "Setting an invalid grace-time: -2"
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+end
