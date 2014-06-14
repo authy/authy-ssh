@@ -658,12 +658,6 @@ function ask_token_and_log_user_in() {
       run_shell
     fi
 
-    times=3
-    if [[ $AUTHY_TOKEN ]] # env var
-    then
-      times=1
-    fi
-    
     check_grace_period $grace_period
     if [[ $? == $OK ]]
     then
@@ -671,7 +665,13 @@ function ask_token_and_log_user_in() {
       update_last_login
       run_shell
     fi
-
+    
+    times=3
+    if [[ $AUTHY_TOKEN ]] # env var
+    then
+      times=1
+    fi
+    
     for i in `seq 1 $times`
     do
         authy_token="$(escape_number $AUTHY_TOKEN)"
