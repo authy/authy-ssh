@@ -61,6 +61,7 @@ function get_date() {
 
 function update_last_login() {
   mkdir -p "$LAST_LOGIN_FOLDER"
+  chmod 755 "$LAST_LOGIN_FOLDER"
   echo "$USER|$(get_date)|$(get_ssh_client_ip)" > $LAST_LOGIN_FILE
   chmod 600 $LAST_LOGIN_FILE
 }
