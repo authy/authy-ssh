@@ -56,11 +56,16 @@ authy_ssh("install .", {}, true) do |stdin, stdout|
     print "Select the option 1: Disable two factor authentication until api.authy.com is back"
     stdin.puts "1"
   end
+  
+  if read_until(stdout, /type 1 or 2 to select the option/i)
+    print "Select the option 1: show default MOTD"
+    stdin.puts "1"
+  end
 
   if read_until(stdout, /Restart the SSH server to apply changes/i)
     config_path = File.expand_path("../authy-ssh.conf", __FILE__)
     config = File.read(config_path)
-    if config =~ /default_verify_action=disable/
+    if config =~ /default_verify_action=disable/ and config =~ /load_default_banner=enable/
       green " [OK]"
     else
       yellow " Option not configured"
@@ -80,11 +85,16 @@ authy_ssh("install .", {}, true) do |stdin, stdout|
     print "Select the option 2: Don't allow logins until api.authy.com is back"
     stdin.puts "2"
   end
+  
+  if read_until(stdout, /type 1 or 2 to select the option/i)
+    print "Select the option 2: suppress default MOTD"
+    stdin.puts "2"
+  end
 
   if read_until(stdout, /Restart the SSH server to apply changes/i)
     config_path = File.expand_path("../authy-ssh.conf", __FILE__)
     config = File.read(config_path)
-    if config =~ /default_verify_action=enforce/
+    if config =~ /default_verify_action=enforce/ and config =~ /load_default_banner=disable/
       green " [OK]"
     else
       yellow " Option not configured"
@@ -100,6 +110,28 @@ authy_ssh("install .", {}, true) do |stdin, stdout|
     stdin.puts "0cd08abec2e9b9641e40e9470a7fc336"
   end
 
+  if read_until(stdout, /type 1 or 2 to select the option/i)
+    print "Select an invalid option: 9"
+    stdin.puts "9"
+  end
+
+  if read_until(stdout, /you have entered an invalid option/i)
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+  system("sudo rm authy-ssh")
+end
+
+authy_ssh("install .", {}, true) do |stdin, stdout|
+  if read_until(stdout, /Enter the Authy API key/i)
+    stdin.puts "0cd08abec2e9b9641e40e9470a7fc336"
+  end
+
+  if read_until(stdout, /type 1 or 2 to select the option/i)
+    stdin.puts "2"
+  end
+  
   if read_until(stdout, /type 1 or 2 to select the option/i)
     print "Select an invalid option: 9"
     stdin.puts "9"
