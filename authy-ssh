@@ -100,9 +100,9 @@ function find_sshd_config() {
         SSHD_CONFIG="/etc/sshd_config"
     elif [[ -f /etc/ssh/sshd_config ]]
     then
-        SSHD_CONFIG="/etc/ssh/sshd_config"
-    else
-        red "Cannot find sshd_config in your server. Authy SSH will be enabled when you add the ForceCommand to it"
+        SSHD_CONFIG="/etc/ssh/sshd_config"       
+    fi
+}
     fi
 }
 
@@ -120,6 +120,8 @@ function add_force_command() {
       echo ""
       red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${authy_ssh_command} BEFORE UNINSTALLING AUTHY SSH"
       sleep 5
+    else
+      red "Cannot find sshd_config in your server. Authy SSH will be enabled when you add the ForceCommand to it"
     fi
 }
 
