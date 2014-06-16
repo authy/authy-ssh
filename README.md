@@ -66,6 +66,7 @@ Here's an example:
 
     [root@ip-10-2-113-233 ~]# cat /usr/local/bin/authy-ssh.conf
     banner=Good job! You've securely logged in with Authy.
+    load_default_banner=enable
     api_key=05c783f2db87b73b198f11fe45dd8bfb
     user=root:1:-1
     user=daniel:1:300
@@ -73,6 +74,10 @@ Here's an example:
 In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in. 
 The user daniel has an optional `grace-period` of 300 seconds, allowing them to open a new session within 5 minutes of the last successful login without requiring two-factor authentication.
 On the other hand, the root user uses the default `grace-period` of -1, requiring all sessions to use two-factor authentication, regardless of recent successful logins.
+
+
+The `load_default_banner` option will show the operating system's default SSH banner when a successful login occurs. This checks to see if a MOTD is set in /etc/pam.d/sshd or /etc/motd. 
+Setting this to disable will suppress the default sshd MOTD.
 
 ## Using two-factor auth with automated deployment tools.
 
