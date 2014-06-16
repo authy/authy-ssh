@@ -682,7 +682,7 @@ function request_sms() {
     response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
     debug "[request sms] url: $url | response: $response | curl exit stats: $?"
 
-    if [[ $response == *success*sent* ]]
+    if [[ $response == *success*"was sent"* ]]
     then
         green "SMS message was sent"
     elif [[ $response == *not*enabled* ]]
