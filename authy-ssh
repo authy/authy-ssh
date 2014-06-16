@@ -103,6 +103,15 @@ function find_sshd_config() {
         SSHD_CONFIG="/etc/ssh/sshd_config"       
     fi
 }
+
+function find_pamd_sshd() {
+    debug "Trying to find pam sshd file"
+    if [[ -f /etc/pam.d/sshd ]]
+    then
+        PAM_SSHD_CONFIG="/etc/pam.d/sshd"
+    elif [[ -f /etc/pam.conf ]]
+    then
+        PAM_SSHD_CONFIG="/etc/pam.conf"       
     fi
 }
 
@@ -184,9 +193,31 @@ function install_authy() {
           return $FAIL
           ;;
       esac
+      
+      echo "Show default MOTD / Banner on successful login: "
+      echo ""
+      echo "  1. Show the default sshd MOTD / Banner on login"
+      echo "  2. Suppress the default sshd MOTD / Banner on login"
+      echo ""
+      echo -n "type 1 or 2 to select the option: "
+      read load_default_banner
+
+      case $load_default_banner in
+        1)
+          load_default_banner="enable"
+          ;;
+        2)
+          load_default_banner="disable"
+          ;;
+        *)
+          red "you have entered an invalid option"
+          return $FAIL
+          ;;
+      esac
 
       yellow "Generating initial config on ${config_file}..."
       echo "banner=Good job! You've securely logged in with Authy." > "${config_file}"
+      echo "load_default_banner=${load_default_banner}"
       echo "api_key=${authy_api_key}" >> "${config_file}"
       echo "default_verify_action=${default_verify_action}" >> "${config_file}"
     else
@@ -526,6 +557,31 @@ function run_shell() {
     elif [ $SHELL ] # when user runs: ssh server
     then
         debug "running shell: $SHELL"
+        load_default_banner=$(read_config load_default_banner)
+        if [[ $? == $OK && "$load_default_banner" == "enable" ]];
+        then               
+            find_pamd_sshd
+            # if we found pam
+            if [[ -r $PAM_SSHD_CONFIG ]]
+            then
+                debug "Found $PAM_SSHD_CONFIG"
+                # pam says load motd from specific file for sshd
+                # find an uncommented line for session or sshd containing pam_motd and motd variable
+                BANNER="`sed -n 's/^\(session\|sshd\).*pam_motd.*motd=\(\S*\)\s*.*$/\2/p' /etc/pam.d/sshd`"
+                if [[ ! -z $BANNER && -r "/var/$BANNER" ]]
+                then
+                    debug "Showing /var/$BANNER"
+                    cat "/var/$BANNER"
+                fi
+            fi
+            
+            # if motd exists, print that out too
+            if [[ -r "/etc/motd" ]]
+            then
+                debug "Showing /etc/motd"
+                cat "/etc/motd"
+            fi
+        fi
         exec -l $SHELL
     fi
 
