@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.6"
+VERSION="1.6.1"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
@@ -731,6 +731,7 @@ function ask_token_and_log_user_in() {
       times=1
     fi
     
+    unset IFS
     for i in `seq 1 $times`
     do
         authy_token="$(escape_number $AUTHY_TOKEN)"
