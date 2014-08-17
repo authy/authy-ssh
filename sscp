@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo "Enter Authy Key, followed by [ENTER]:"
+
+read AUTHY_TOKEN
+export AUTHY_TOKEN
+
+scp ${*:1}
+
