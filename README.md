@@ -124,6 +124,11 @@ And finally pass the token before the command:
     AUTHY_TOKEN="valid-token" scp server:path/to/file local-file
     AUTHY_TOKEN="valid-token" mosh server
 
+Or for scp, put the supplied sscp script on your PATH and call that instead of scp:
+
+    sscp -option server:path/to/file local-file
+
+This will prompt for the Authy key and create the AUTHY_TOKEN environment variable for you.
 
 ## Multiple users sharing the same unix account.
 
