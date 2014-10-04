@@ -217,7 +217,7 @@ function install_authy() {
 
       yellow "Generating initial config on ${config_file}..."
       echo "banner=Good job! You've securely logged in with Authy." > "${config_file}"
-      echo "load_default_banner=${load_default_banner}"
+      echo "load_default_banner=${load_default_banner}" >> "${config_file}"
       echo "api_key=${authy_api_key}" >> "${config_file}"
       echo "default_verify_action=${default_verify_action}" >> "${config_file}"
     else
