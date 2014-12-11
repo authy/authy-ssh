@@ -9,12 +9,14 @@ READ_TIMEOUT=60
 
 OK=0
 FAIL=1
+SEQ="seq"
 
 export TERM="xterm-256color"
 NORMAL=$(tput sgr0)
 GREEN=$(tput setaf 2; tput bold)
 YELLOW=$(tput setaf 3)
 RED=$(tput setaf 1)
+
 
 function red() {
     echo -e "$RED$*$NORMAL"
@@ -33,6 +35,19 @@ function debug() {
     then
         echo ">>> $*"
     fi
+}
+
+function check_dependencies() {
+  if ! type "seq" > /dev/null 2>&1;
+  then
+    if ! type "jot" > /dev/null 2>&1;
+    then
+      red "You need installed on your system either 'seq' or 'jot' command"
+      exit $FAIL
+    else
+      SEQ="jot"
+    fi
+  fi
 }
 
 function escape_input() {
@@ -579,7 +594,7 @@ function ask_token_and_log_user_in() {
       times=1
     fi
 
-    for i in `seq 1 $times`
+    for i in `$SEQ 1 $times`
     do
         authy_token="$(escape_number $AUTHY_TOKEN)"
         if [[ ! $AUTHY_TOKEN ]]
@@ -632,9 +647,11 @@ cd - >/dev/null
 
 case $1 in
     install)
+        check_dependencies
         install_authy "$0" "$2"
         ;;
     update)
+        check_dependencies
         require_root
         update_authy
         ;;
@@ -644,11 +661,13 @@ case $1 in
         ;;
     test|check)
         check_config_file
+        check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key || exit
         ask_token_and_log_user_in "test"
         ;;
     enable|register)
+        check_dependencies
         require_root
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
@@ -657,12 +676,14 @@ case $1 in
         ;;
     login)
         check_config_file
+        check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key
         ask_token_and_log_user_in "login" "$2"
         ;;
     protect)
         check_config_file
+        check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         protect_user "$2"
         ;;
