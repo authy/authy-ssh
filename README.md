@@ -54,6 +54,19 @@ Now protect your user:
     $ bash ~/.authy-ssh/authy-ssh protect
 
 
+## Enable two-factor auth on a user.
+
+After the installation is finished, you have to proactively enable the two-factor for the users you want to protect.
+
+To enable users type the following command and fill the form:
+
+    $ sudo authy-ssh enable
+
+If you want to do it in one line just type:
+
+    $ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>
+
+
 ## How it works
 
 Authy-ssh uses the `sshd_config` directive `ForceCommand` to run itself before every login. Here's how your sshd_config will look after installing:
@@ -94,17 +107,6 @@ Now that my root user is in the two-factor group, I edit my /etc/ssh/sshd_config
     Starting sshd:                                             [  OK  ]
 
 Now force command will only operate on users that belong to the two-factor group.
-
-
-## Enable two-factor auth on a user.
-
-To enable users type the following command and fill the form:
-
-    $ sudo authy-ssh enable
-
-If you want to do it in one line just type:
-
-	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>
 
 
 ## `scp`, `mosh` and `git push` with two-factor authentication.
@@ -151,4 +153,4 @@ To uninstall type:
     $ sudo authy-ssh uninstall
     $ restart your SSH server
 
-	
+
