@@ -31,7 +31,7 @@ Restart your SSH server (look below if you are not on Ubuntu).
 
 **Debian**
 
-    sudo /etc/init.d/sshd restart
+    sudo service sshd restart
 
 **RedHat and Fedora Core Linux**
 
