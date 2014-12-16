@@ -524,7 +524,7 @@ function login() {
     if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"success\":\"true\"* ]]
     then
         debug "Two-factor token was accepted."
-        if [[ "$AUTHY_TOKEN" == "" ]]
+        if [[ ! $AUTHY_TOKEN ]]
         then
             banner_text=$(read_config banner)
             if [[ $? == $OK ]];

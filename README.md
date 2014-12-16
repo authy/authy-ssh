@@ -109,9 +109,9 @@ Now that my root user is in the two-factor group, I edit my /etc/ssh/sshd_config
 Now force command will only operate on users that belong to the two-factor group.
 
 
-## `scp`, `mosh` and `git push` with two-factor authentication.
+## `scp`, `sftp`, `mosh` and `git push` with two-factor authentication.
 
-To enable non-interactive commands like `scp`, `mosh` and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
+To enable non-interactive commands like `scp`, `sftp`, `mosh` and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
 
 	AcceptEnv AUTHY_TOKEN
 
@@ -126,6 +126,9 @@ And finally pass the token before the command:
     AUTHY_TOKEN="valid-token" scp server:path/to/file local-file
     AUTHY_TOKEN="valid-token" mosh server
 
+### Note
+
+For cases like `sftp` if you enter an invalid token, you may receive a response like *"Received message too long 458961713"*. This is because the interactive command is not able to render the proper output text message returned by the program.
 
 ## Multiple users sharing the same unix account.
 
