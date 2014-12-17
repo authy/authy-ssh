@@ -157,3 +157,9 @@ To uninstall type:
     $ restart your SSH server
 
 
+## Running Unit Tests
+
+Fork and clone the git repository https://github.com/authy/authy-ssh.git
+
+    $ cd tests
+    $ rake test
