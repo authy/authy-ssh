@@ -4,7 +4,7 @@ VERSION="1.4"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
-UPSTREAM_URL="https://raw.github.com/authy/authy-ssh/master/authy-ssh"
+UPSTREAM_URL="https://raw.githubusercontent.com/authy/authy-ssh/master/authy-ssh"
 READ_TIMEOUT=60
 
 OK=0
@@ -622,7 +622,7 @@ function ask_token_and_log_user_in() {
 }
 
 function update_authy() {
-  temp_file="$(mktemp)"
+  temp_file="$(mktemp -t tmpXXXXXXXXX)"
   curl "${UPSTREAM_URL}" -o "$temp_file"
   chmod 755 "$temp_file"
 

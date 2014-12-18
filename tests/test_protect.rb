@@ -24,7 +24,7 @@ authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
     stdin.puts "y"
   end
 
-  if read_until(stdout, /0 is not a valid country code/i)
+  if read_until(stdout, /country_code":"is invalid/i)
     green " [OK]"
   else
     red " [FAILED]"

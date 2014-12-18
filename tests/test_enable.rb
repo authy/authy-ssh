@@ -45,10 +45,10 @@ authy_ssh("enable #{ENV["USER"]} test@authy.com 0 '111;111;;;1111'", {}, true) d
     stdin.puts "y"
   end
 
-  if read_until(stdout, /0 is not a valid country code/i)
-    print "Sending an invalid country code: 0"
+  if read_until(stdout, /country_code":"is invalid/i)
     green " [OK]"
   else
+
     red " [FAILED]"
   end
 end
