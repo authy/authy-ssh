@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
-VERSION="1.5"
+VERSION="1.6"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
 UPSTREAM_URL="https://raw.githubusercontent.com/authy/authy-ssh/master/authy-ssh"
 READ_TIMEOUT=60
+MIN_API_KEY_SIZE=12
 
 OK=0
 FAIL=1
@@ -154,7 +155,7 @@ function install_authy() {
       echo -n "Enter the Authy API key: "
       read  authy_api_key
 
-      if [ ${#authy_api_key} != 32 ]
+      if [ ${#authy_api_key} -lt ${MIN_API_KEY_SIZE} ]
       then
         red "you have entered a wrong API key"
         return $FAIL
@@ -267,7 +268,7 @@ function check_config_file() {
 #   - anything else: exits the command
 function check_api_key() {
     debug "Checking api key"
-    if [[ "${#AUTHY_API_KEY}" != 32 ]]
+    if [ ${#AUTHY_API_KEY} -lt ${MIN_API_KEY_SIZE} ]
     then
         red "Cannot find a valid api key"
         run_shell
