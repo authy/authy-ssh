@@ -70,7 +70,7 @@ authy_ssh("login") do |stdin, stdout|
     stdin.puts "sms"
   end
 
-  if read_until(stdout, /SMS is not enabled on Sandbox accounts./i)
+  if read_until(stdout, /SMS token was sent/i)
     green " [OK]"
   else
     red " [FAILED]"
