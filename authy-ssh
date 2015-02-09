@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.6"
+VERSION="1.7"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
@@ -59,6 +59,10 @@ function escape_number() {
   sed 's/[^0-9]*//g' <<< $*
 }
 
+function os_version() {
+  echo `uname -srm`
+}
+
 function read_input() {
   read -t "$READ_TIMEOUT" input
   echo "$(escape_input $input)"
@@ -90,6 +94,11 @@ function require_curl() {
     curl --help 2>&1 > /dev/null
 
     return $FAIL
+}
+
+function user_agent() {
+  os="$(os_version)"
+  echo "User-Agent: AuthySSH/${VERSION} (${os})"
 }
 
 function find_sshd_config() {
@@ -413,7 +422,8 @@ function register_user_on_authy() {
         return $FAIL
     fi
 
-    response=`curl --connect-timeout 10 "${url}" -d user[email]="${email}" -d user[country_code]="${country_code}" -d user[cellphone]="${cellphone}" -s 2>/dev/null`
+    useragent="$(user_agent)"
+    response=`curl --connect-timeout 10 "${url}" -A "${useragent}" -d user[email]="${email}" -d user[country_code]="${country_code}" -d user[cellphone]="${cellphone}" -s 2>/dev/null`
     ok=true
 
     debug "[register-user] url: $url | response: $response | curl exit stats: $?"
@@ -496,8 +506,17 @@ function login() {
       return $FAIL
     fi
 
+    size=${#authy_token} 
+    if [[ $size -lt 6 || $size -gt 10 ]]
+    then
+      red "You have to enter a valid token."
+      return $FAIL
+    fi
+
+    useragent="$(user_agent)"
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
-    response=`curl --connect-timeout 30 -sL -w "|%{http_code}" "${url}"`
+
+    response=`curl --connect-timeout 30 -sL -w "|%{http_code}" -A "${useragent}" "${url}"`
     curl_exit_code=$?
     IFS='|' response_body=($response) # convert to array
 
@@ -512,7 +531,7 @@ function login() {
     if [[ $default_verify_action == "disable" ]]
     then
         debug "Checking if authy service is up."
-        check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -o /dev/null`
+        check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -A "${useragent}" -o /dev/null`
         check_exit_code=$?
 
         if [[ $check_exit_code == 7 || $check_exit_code == 28 ]]
@@ -552,7 +571,8 @@ function request_sms() {
     authy_id="$(escape_number $1)"
     url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
 
-    response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
+    useragent="$(user_agent)"
+    response=`curl --connect-timeout 10 -A "${useragent}" "${url}" 2>/dev/null`
     debug "[request sms] url: $url | response: $response | curl exit stats: $?"
 
     if [[ $response == *success*sent* ]]
