@@ -541,7 +541,7 @@ function login() {
         fi
     fi
 
-    if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"success\":\"true\"* ]]
+    if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"token\":\"is*valid\"* ]]
     then
         debug "Two-factor token was accepted."
         if [[ ! $AUTHY_TOKEN ]]
