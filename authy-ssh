@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 
-VERSION="1.6.1"
+VERSION="1.7.1"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
 LAST_LOGIN_FOLDER="$HOME/.authy-ssh/"
 LAST_LOGIN_FILE="$LAST_LOGIN_FOLDER/last-login"
-UPSTREAM_URL="https://raw.github.com/authy/authy-ssh/master/authy-ssh"
+UPSTREAM_URL="https://raw.githubusercontent.com/DigitalDJ/authy-ssh/master/authy-ssh"
 READ_TIMEOUT=60
+MIN_API_KEY_SIZE=12
 
 OK=0
 FAIL=1
+SEQ="seq"
 
 export TERM="xterm-256color"
 NORMAL=$(tput sgr0)
 GREEN=$(tput setaf 2; tput bold)
 YELLOW=$(tput setaf 3)
 RED=$(tput setaf 1)
+
 
 function red() {
     echo -e "$RED$*$NORMAL"
@@ -37,12 +40,29 @@ function debug() {
     fi
 }
 
+function check_dependencies() {
+  if ! type "seq" > /dev/null 2>&1;
+  then
+    if ! type "jot" > /dev/null 2>&1;
+    then
+      red "You need installed on your system either 'seq' or 'jot' command"
+      exit $FAIL
+    else
+      SEQ="jot"
+    fi
+  fi
+}
+
 function escape_input() {
   sed "s/[;\`\"\$\' ]//g" <<<$*
 }
 
 function escape_number() {
   sed 's/^-?[0-9]*//g' <<< $*
+}
+
+function os_version() {
+  echo `uname -srm`
 }
 
 function read_input() {
@@ -93,6 +113,11 @@ function require_curl() {
     return $FAIL
 }
 
+function user_agent() {
+  os="$(os_version)"
+  echo "User-Agent: AuthySSH/${VERSION} (${os})"
+}
+
 function find_sshd_config() {
     debug "Trying to find sshd_config file"
     if [[ -f /etc/sshd_config ]]
@@ -100,7 +125,7 @@ function find_sshd_config() {
         SSHD_CONFIG="/etc/sshd_config"
     elif [[ -f /etc/ssh/sshd_config ]]
     then
-        SSHD_CONFIG="/etc/ssh/sshd_config"       
+        SSHD_CONFIG="/etc/ssh/sshd_config"
     fi
 }
 
@@ -167,7 +192,7 @@ function install_authy() {
       echo -n "Enter the Authy API key: "
       read  authy_api_key
 
-      if [ ${#authy_api_key} != 32 ]
+      if [ ${#authy_api_key} -lt ${MIN_API_KEY_SIZE} ]
       then
         red "you have entered a wrong API key"
         return $FAIL
@@ -306,7 +331,7 @@ function check_config_file() {
 #   - anything else: exits the command
 function check_api_key() {
     debug "Checking api key"
-    if [[ "${#AUTHY_API_KEY}" != 32 ]]
+    if [ ${#AUTHY_API_KEY} -lt ${MIN_API_KEY_SIZE} ]
     then
         red "Cannot find a valid api key"
         run_shell
@@ -513,7 +538,8 @@ function register_user_on_authy() {
         return $FAIL
     fi
 
-    response=`curl --connect-timeout 10 "${url}" -d user[email]="${email}" -d user[country_code]="${country_code}" -d user[cellphone]="${cellphone}" -s 2>/dev/null`
+    useragent="$(user_agent)"
+    response=`curl --connect-timeout 10 "${url}" -A "${useragent}" -d user[email]="${email}" -d user[country_code]="${country_code}" -d user[cellphone]="${cellphone}" -s 2>/dev/null`
     ok=true
 
     debug "[register-user] url: $url | response: $response | curl exit stats: $?"
@@ -621,8 +647,17 @@ function login() {
       return $FAIL
     fi
 
+    size=${#authy_token} 
+    if [[ $size -lt 6 || $size -gt 10 ]]
+    then
+      red "You have to enter a valid token."
+      return $FAIL
+    fi
+
+    useragent="$(user_agent)"
     url="$AUTHY_URL/protected/json/verify/${authy_token}/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
-    response=`curl --connect-timeout 30 -sL -w "|%{http_code}" "${url}"`
+
+    response=`curl --connect-timeout 30 -sL -w "|%{http_code}" -A "${useragent}" "${url}"`
     curl_exit_code=$?
     IFS='|' response_body=($response) # convert to array
 
@@ -637,7 +672,7 @@ function login() {
     if [[ $default_verify_action == "disable" ]]
     then
         debug "Checking if authy service is up."
-        check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -o /dev/null`
+        check_response=`curl --connect-timeout 10 -s "${AUTHY_URL}" -A "${useragent}" -o /dev/null`
         check_exit_code=$?
 
         if [[ $check_exit_code == 7 || $check_exit_code == 28 ]]
@@ -647,10 +682,10 @@ function login() {
         fi
     fi
 
-    if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"success\":\"true\"* ]]
+    if [[ "${response_body[1]}" == "200" ]] && [[ "${response_body[0]}" == *\"token\":\"is*valid\"* ]]
     then
         debug "Two-factor token was accepted."
-        if [[ "$AUTHY_TOKEN" == "" ]]
+        if [[ ! $AUTHY_TOKEN ]]
         then
             banner_text=$(read_config banner)
             if [[ $? == $OK ]];
@@ -679,7 +714,8 @@ function request_sms() {
     authy_id="$(escape_number $1)"
     url="$AUTHY_URL/protected/json/sms/${authy_id}?api_key=${AUTHY_API_KEY}&force=true"
 
-    response=`curl --connect-timeout 10 "${url}" 2>/dev/null`
+    useragent="$(user_agent)"
+    response=`curl --connect-timeout 10 -A "${useragent}" "${url}" 2>/dev/null`
     debug "[request sms] url: $url | response: $response | curl exit stats: $?"
 
     if [[ $response == *success*"was sent"* ]]
@@ -724,15 +760,15 @@ function ask_token_and_log_user_in() {
       update_last_login
       run_shell
     fi
-    
+
     times=3
     if [[ $AUTHY_TOKEN ]] # env var
     then
       times=1
     fi
-    
+
     unset IFS
-    for i in `seq 1 $times`
+    for i in `$SEQ 1 $times`
     do
         authy_token="$(escape_number $AUTHY_TOKEN)"
         if [[ ! $AUTHY_TOKEN ]]
@@ -760,7 +796,7 @@ function ask_token_and_log_user_in() {
 }
 
 function update_authy() {
-  temp_file="$(mktemp)"
+  temp_file="$(mktemp -t tmpXXXXXXXXX)"
   curl "${UPSTREAM_URL}" -o "$temp_file"
   chmod 755 "$temp_file"
 
@@ -785,9 +821,11 @@ cd - >/dev/null
 
 case $1 in
     install)
+        check_dependencies
         install_authy "$0" "$2"
         ;;
     update)
+        check_dependencies
         require_root
         update_authy
         ;;
@@ -797,11 +835,13 @@ case $1 in
         ;;
     test|check)
         check_config_file
+        check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key || exit
         ask_token_and_log_user_in "test"
         ;;
     enable|register)
+        check_dependencies
         require_root
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
@@ -810,12 +850,14 @@ case $1 in
         ;;
     login)
         check_config_file
+        check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key
         ask_token_and_log_user_in "login" "$2" "$3"
         ;;
     protect)
         check_config_file
+        check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         protect_user "$2"
         ;;

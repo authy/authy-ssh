@@ -8,7 +8,7 @@
 
 Type the following command in the terminal:
 
-    $ curl -O 'https://raw.githubusercontent.com/authy/authy-ssh/master/authy-ssh'
+    $ curl -O 'https://raw.githubusercontent.com/DigitalDJ/authy-ssh/master/authy-ssh'
     $ sudo bash authy-ssh install /usr/local/bin
 
 Then enable two-factor for your user:
@@ -31,7 +31,7 @@ Restart your SSH server (look below if you are not on Ubuntu).
 
 **Debian**
 
-    sudo /etc/init.d/sshd restart
+    sudo service sshd restart
 
 **RedHat and Fedora Core Linux**
 
@@ -45,13 +45,26 @@ Restart your SSH server (look below if you are not on Ubuntu).
 
 Type the following command in the terminal:
 
-    $ curl 'https://raw.github.com/authy/authy-ssh/master/authy-ssh' -o authy-ssh
+    $ curl 'https://raw.githubusercontent.com/DigitalDJ/authy-ssh/master/authy-ssh' -o authy-ssh
     $ bash authy-ssh install ~/.authy-ssh/
 
 
 Now protect your user:
 
     $ bash ~/.authy-ssh/authy-ssh protect
+
+
+## Enable two-factor auth on a user.
+
+After the installation is finished, you have to proactively enable the two-factor for the users you want to protect.
+
+To enable users type the following command and fill the form:
+
+    $ sudo authy-ssh enable
+
+If you want to do it in one line just type:
+
+    $ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> [grace-period]
 
 
 ## How it works
@@ -71,10 +84,9 @@ Here's an example:
     user=root:1:-1
     user=daniel:1:300
 
-In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in. 
+In this case it means user root and daniel have two-factor enabled and that 1 is their `authy_id`. If a user is not in this list, `authy-ssh` will automatically let him in.
 The user daniel has an optional `grace-period` of 300 seconds, allowing them to open a new session within 5 minutes of the last successful login without requiring two-factor authentication.
 On the other hand, the root user uses the default `grace-period` of -1, requiring all sessions to use two-factor authentication, regardless of recent successful logins.
-
 
 The `load_default_banner` option will show the operating system's default SSH banner when a successful login occurs. This checks to see if a MOTD is set in /etc/pam.d/sshd or /etc/motd. 
 Setting this to disable will suppress the default sshd MOTD.
@@ -103,20 +115,9 @@ Now that my root user is in the two-factor group, I edit my /etc/ssh/sshd_config
 Now force command will only operate on users that belong to the two-factor group.
 
 
-## Enable two-factor auth on a user.
+## `scp`, `sftp`, `mosh` and `git push` with two-factor authentication.
 
-To enable users type the following command and fill the form:
-
-    $ sudo authy-ssh enable
-
-If you want to do it in one line just type:
-
-	$ sudo authy-ssh enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> [grace-period]
-
-
-## `scp`, `mosh` and `git push` with two-factor authentication.
-
-To enable non-interactive commands like `scp`, `mosh` and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
+To enable non-interactive commands like `scp`, `sftp`, `mosh` and `git clone|fetch|push` you have to allow to pass the environment variable `AUTHY_TOKEN` from the client. To do so edit your `sshd_config` (normally located at `/etc` or `/etc/ssh/`) and add `AUTHY_TOKEN` to the AcceptEnv directive:
 
 	AcceptEnv AUTHY_TOKEN
 
@@ -131,6 +132,9 @@ And finally pass the token before the command:
     AUTHY_TOKEN="valid-token" scp server:path/to/file local-file
     AUTHY_TOKEN="valid-token" mosh server
 
+### Note
+
+For cases like `sftp` if you enter an invalid token, you may receive a response like *"Received message too long 458961713"*. This is because the interactive command is not able to render the proper output text message returned by the program.
 
 ## Multiple users sharing the same unix account.
 
@@ -158,4 +162,10 @@ To uninstall type:
     $ sudo authy-ssh uninstall
     $ restart your SSH server
 
-	
+
+## Running Unit Tests
+
+Fork and clone the git repository https://github.com/DigitalDJ/authy-ssh.git
+
+    $ cd tests
+    $ rake test

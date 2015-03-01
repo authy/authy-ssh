@@ -13,7 +13,7 @@ authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
   end
 
   if read_until(stdout, /Your cellphone/i)
-    stdin.puts "123456"
+    stdin.puts "1234567"
   end
 
   if read_until(stdout, /Your email/i)
@@ -24,7 +24,7 @@ authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
     stdin.puts "y"
   end
 
-  if read_until(stdout, /0 is not a valid country code/i)
+  if read_until(stdout, /country_code":"is invalid/i)
     green " [OK]"
   else
     red " [FAILED]"
@@ -70,7 +70,7 @@ authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
   end
 
   if read_until(stdout, /Your cellphone/i)
-    stdin.puts "123456"
+    stdin.puts "1234567"
   end
 
   if read_until(stdout, /Your email/i)
@@ -99,7 +99,7 @@ authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
   end
 
   if read_until(stdout, /Your cellphone/i)
-    stdin.puts "123456"
+    stdin.puts "1234567"
   end
 
   if read_until(stdout, /Your email/i)

@@ -8,6 +8,19 @@ authy_ssh("login") do |stdin, stdout|
     stdin.puts "1234"
   end
 
+  if read_until(stdout, /You have to enter a valid token/i)
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+end
+
+authy_ssh("login") do |stdin, stdout|
+  if read_until(stdout, /Authy Token/)
+    print "Sending invalid token: 123456"
+    stdin.puts "123456"
+  end
+
   if read_until(stdout, /Invalid token/i)
     green " [OK]"
   else
@@ -17,20 +30,20 @@ end
 
 authy_ssh("login", "mode" => "test", "authy_token" => "32|21") do |stdin, stdout|
   if read_until(stdout, /Authy Token/)
-    print "Sending invalid token: #1-}2$34 5'6{7"
-    stdin.puts "#1-}2$34 5'6{7"
+    print "Sending invalid token: 0000000/12w#-}A$Rf s'Q{3A"
+    stdin.puts "0000000/12w#-}A$Rf s'Q{3A"
   end
 
-  if read_until(stdout, /Logging 2 with 1234567 in login mode./i)
+  if read_until(stdout, /Logging 2 with 0000000123 in login mode./i)
     green " [OK]"
   else
     red " [FAILED]"
   end
 end
 
-authy_ssh("login", "AUTHY_TOKEN" => "32|21") do |stdin, stdout|
+authy_ssh("login", "AUTHY_TOKEN" => "323|212") do |stdin, stdout|
   print "Loging in using the AUTHY_TOKEN env var"
-  if read_until(stdout, /Logging 2 with 3221 in login mode./i)
+  if read_until(stdout, /Logging 2 with 323212 in login mode./i)
     green " [OK]"
   else
     red " [FAILED]"
@@ -70,7 +83,7 @@ authy_ssh("login") do |stdin, stdout|
     stdin.puts "sms"
   end
 
-  if read_until(stdout, /SMS is not enabled on Sandbox accounts./i)
+  if read_until(stdout, /SMS token was sent/i)
     green " [OK]"
   else
     red " [FAILED]"
