@@ -150,13 +150,29 @@ function add_force_command() {
       yellow "Adding 'ForceCommand ${authy_ssh_command} login' to ${SSHD_CONFIG}"
       uninstall_authy "quiet" # remove previous installations
 
-      echo "ForceCommand ${authy_ssh_command} login" >> ${SSHD_CONFIG}
+      echo -e "\nForceCommand ${authy_ssh_command} login" >> ${SSHD_CONFIG}
       echo ""
+
+      check_sshd_config_file
+
       red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${authy_ssh_command} BEFORE UNINSTALLING AUTHY SSH"
       sleep 5
     else
       red "Cannot find sshd_config in your server. Authy SSH will be enabled when you add the ForceCommand to it"
     fi
+}
+
+function check_sshd_config_file() {
+  yellow "Checking the validity of $SSHD_CONFIG file..."
+
+  sshd -t
+
+  if [ $? -ne 0 ]
+  then
+    red "sshd_config file is invalid. MAKE SURE YOU DO NOT RESTART THE SSH SERVER UNTIL YOU FIX IT."
+    exit $FAIL
+  fi
+
 }
 
 function install_authy() {
@@ -647,7 +663,7 @@ function login() {
       return $FAIL
     fi
 
-    size=${#authy_token} 
+    size=${#authy_token}
     if [[ $size -lt 6 || $size -gt 10 ]]
     then
       red "You have to enter a valid token."
