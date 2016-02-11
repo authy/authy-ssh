@@ -88,3 +88,36 @@ authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
     red " [FAILED]"
   end
 end
+
+authy_ssh("protect #{ENV["USER"]}") do |stdin, stdout|
+  if read_until(stdout, /Enter your public ssh key/i)
+    stdin.puts "#{SSH_KEY}"
+  end
+
+  if read_until(stdout, /Your country code/i)
+    stdin.puts "1"
+  end
+
+  if read_until(stdout, /Your cellphone/i)
+    stdin.puts "1234567"
+  end
+
+  if read_until(stdout, /Your email/i)
+    stdin.puts "test@authy.com"
+  end
+
+  if read_until(stdout, /Do you want to enable this user/i)
+    stdin.puts "y"
+  end
+  
+  if read_until(stdout, /Enter your desired grace-period/i)
+    print "Setting an invalid grace-time"
+    stdin.puts "aaa"
+  end
+
+  if read_until(stdout, /grace-period is invalid/i)
+    green " [OK]"
+  else
+    red " [FAILED]"
+  end
+end

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-VERSION="1.7"
+VERSION="1.7.1"
 AUTHY_URL="https://api.authy.com"
 APP_ROOT=`dirname $0`
 CONFIG_FILE="$APP_ROOT/authy-ssh.conf"
-UPSTREAM_URL="https://raw.githubusercontent.com/authy/authy-ssh/master/authy-ssh"
+LAST_LOGIN_FOLDER="$HOME/.authy-ssh/"
+LAST_LOGIN_FILE="$LAST_LOGIN_FOLDER/last-login"
+UPSTREAM_URL="https://raw.githubusercontent.com/DigitalDJ/authy-ssh/master/authy-ssh"
 READ_TIMEOUT=60
 MIN_API_KEY_SIZE=12
 
@@ -56,7 +58,7 @@ function escape_input() {
 }
 
 function escape_number() {
-  sed 's/[^0-9]*//g' <<< $*
+  sed 's/^-?[0-9]*//g' <<< $*
 }
 
 function os_version() {
@@ -71,6 +73,21 @@ function read_input() {
 function read_number() {
   read -t "$READ_TIMEOUT" number
   echo "$(escape_number $number)"
+}
+
+function get_date() {
+  echo "$(date +%s)"
+}
+
+function update_last_login() {
+  mkdir -p "$LAST_LOGIN_FOLDER"
+  chmod 755 "$LAST_LOGIN_FOLDER"
+  echo "$USER|$(get_date)|$(get_ssh_client_ip)" > $LAST_LOGIN_FILE
+  chmod 600 $LAST_LOGIN_FILE
+}
+
+function get_ssh_client_ip() {
+  echo "$(echo $SSH_CLIENT | awk '{ print $1}')"
 }
 
 function require_root() {
@@ -109,8 +126,17 @@ function find_sshd_config() {
     elif [[ -f /etc/ssh/sshd_config ]]
     then
         SSHD_CONFIG="/etc/ssh/sshd_config"
-    else
-        red "Cannot find sshd_config in your server. Authy SSH will be enabled when you add the ForceCommand to it"
+    fi
+}
+
+function find_pamd_sshd() {
+    debug "Trying to find pam sshd file"
+    if [[ -f /etc/pam.d/sshd ]]
+    then
+        PAM_SSHD_CONFIG="/etc/pam.d/sshd"
+    elif [[ -f /etc/pam.conf ]]
+    then
+        PAM_SSHD_CONFIG="/etc/pam.conf"       
     fi
 }
 
@@ -131,6 +157,8 @@ function add_force_command() {
 
       red "    MAKE SURE YOU DO NOT MOVE/REMOVE ${authy_ssh_command} BEFORE UNINSTALLING AUTHY SSH"
       sleep 5
+    else
+      red "Cannot find sshd_config in your server. Authy SSH will be enabled when you add the ForceCommand to it"
     fi
 }
 
@@ -206,9 +234,31 @@ function install_authy() {
           return $FAIL
           ;;
       esac
+      
+      echo "Show default MOTD / Banner on successful login: "
+      echo ""
+      echo "  1. Show the default sshd MOTD / Banner on login"
+      echo "  2. Suppress the default sshd MOTD / Banner on login"
+      echo ""
+      echo -n "type 1 or 2 to select the option: "
+      read load_default_banner
+
+      case $load_default_banner in
+        1)
+          load_default_banner="enable"
+          ;;
+        2)
+          load_default_banner="disable"
+          ;;
+        *)
+          red "you have entered an invalid option"
+          return $FAIL
+          ;;
+      esac
 
       yellow "Generating initial config on ${config_file}..."
       echo "banner=Good job! You've securely logged in with Authy." > "${config_file}"
+      echo "load_default_banner=${load_default_banner}" >> "${config_file}"
       echo "api_key=${authy_api_key}" >> "${config_file}"
       echo "default_verify_action=${default_verify_action}" >> "${config_file}"
     else
@@ -224,16 +274,20 @@ function install_authy() {
 
     if [[ $SUDO_USER ]]
     then
-      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-numeric-country-code> <your-cellphone>"
-      green "   Example: sudo $0 enable $SUDO_USER myuser@example.com 1 401-390-9987"
+      green "   sudo ${dest} enable $SUDO_USER <your-email> <your-numeric-country-code> <your-cellphone> [grace-period]"
+      green "   Example: sudo $0 enable $SUDO_USER myuser@example.com 1 401-390-9987 -1"
     else
-      green "   sudo ${dest} enable $USER <your-email> <your-numeric-country-code> <your-cellphone>"
-      green "   Example: sudo $0 enable $USER myuser@example.com 1 401-390-9987"
+      green "   sudo ${dest} enable $USER <your-email> <your-numeric-country-code> <your-cellphone> [grace-period]"
+      green "   Example: sudo $0 enable $USER myuser@example.com 1 401-390-9987 -1"
     fi
     echo ""
     echo "To enable two-factor authentication on user account type: "
     echo ""
-    green "   sudo ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone>"
+    green "   sudo ${dest} enable <local-username> <user-email> <user-cellphone-country-code> <user-cellphone> [grace-period]"
+    echo ""
+    echo "Where grace-period, optionally, specify the number of seconds two-factor authentication will not be"
+    echo "  required for creating a new session, after a successful login, from the same user and IP address."
+    echo "  Using the value of -1 will always require two-factor authentication and is the default if not specified."
     echo ""
     echo "To uninstall Authy SSH type:"
     echo ""
@@ -302,6 +356,46 @@ function check_api_key() {
     return $OK
 }
 
+function check_grace_period() {
+    # check if we have a last login file
+    if [[ -f "$LAST_LOGIN_FILE" ]]
+    then
+        # read in the last_login file, don't use colons: ipv6!
+        IFS="|"; declare -a last_login=($(head -n 1 "$LAST_LOGIN_FILE"))
+        # if the user in the file is current user and the IP matches
+        if [[ ${last_login[0]} == $USER && ${last_login[2]} == $(get_ssh_client_ip) ]]
+        then
+            grace_period="$(escape_number "$1")"
+            
+            # if grace_period not sent in by key
+            if [ -z $grace_period ]
+            then
+                # read in the user config
+                for user in `read_config user`
+                do
+                    IFS=":"; declare -a authy_user=($user)
+                    # for this user, check if it has a grace period
+                    if [[ ${authy_user[0]} == $USER && ${#authy_user[@]} -gt 2 && $(escape_number ${authy_user[2]}) -gt -1 ]]
+                    then
+                        grace_period="$(escape_number ${authy_user[2]})"
+                    fi
+                done        
+            fi
+
+            # once we have grace period
+            if [ ! -z $grace_period ]
+            then
+                # if last login time plus grace period is less than current time
+                if [[ $(($(escape_number ${last_login[1]}) + $grace_period)) -ge $(escape_number $(get_date)) ]]
+                then
+                    return $OK
+                fi
+            fi            
+        fi        
+    fi
+    return $FAIL
+}
+
 # Usage: $(read_config banner)
 function read_config() {
     key="$1"
@@ -357,8 +451,20 @@ function protect_user() {
     then
       exit $FAIL
     fi
+    
+    echo -n "Enter your desired grace-period (in seconds) [-1]: "
+    read grace_period
+    
+    if [[ $grace_period == "" ]]
+    then
+        grace_period=-1
+    elif ! [[ $grace_period =~ ^(-1|[0-9]+)$ ]]
+    then
+        yellow "grace-period is invalid"
+        exit $FAIL
+    fi
 
-    echo "command=\"$COMMAND login $authy_user_id\" $ssh_key" >> "${auth_keys}"
+    echo "command=\"$COMMAND login $authy_user_id $grace_period\" $ssh_key" >> "${auth_keys}"
     if [[ $(whoami) == "root" ]]
     then
       chown "$local_user" "$auth_keys"
@@ -366,7 +472,7 @@ function protect_user() {
     green "The user is now protected with authy"
 }
 
-# usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>"
+# usage: register_user "local_user" "<email>" "<country-code>" "<cellphone>" "<grace-period>"
 function register_user() {
   register_user_on_authy $*
 
@@ -375,9 +481,19 @@ function register_user() {
       exit $FAIL
   fi
 
-  if [[ $authy_user_id ]]
+  grace_period="$(escape_number $5)"
+  if [ -z $grace_period ]
   then
-      echo "user=$local_user:$authy_user_id" >> $CONFIG_FILE
+      grace_period=-1
+  elif ! [[ $grace_period =~ ^(-1|[0-9]+)$ ]]
+  then
+      yellow "grace-period is invalid"
+      exit $FAIL
+  fi
+  
+  if [[ $authy_user_id && $grace_period ]]
+  then
+      echo "user=$local_user:$authy_user_id:$grace_period" >> $CONFIG_FILE
       green "User was registered"
   else
       red "Cannot register user: $response"
@@ -483,6 +599,31 @@ function run_shell() {
     elif [ $SHELL ] # when user runs: ssh server
     then
         debug "running shell: $SHELL"
+        load_default_banner=$(read_config load_default_banner)
+        if [[ $? == $OK && "$load_default_banner" == "enable" ]];
+        then               
+            find_pamd_sshd
+            # if we found pam
+            if [[ -r $PAM_SSHD_CONFIG ]]
+            then
+                debug "Found $PAM_SSHD_CONFIG"
+                # pam says load motd from specific file for sshd
+                # find an uncommented line for session or sshd containing pam_motd and motd variable
+                BANNER="`sed -n 's/^\(session\|sshd\).*pam_motd.*motd=\(\S*\)\s*.*$/\2/p' /etc/pam.d/sshd`"
+                if [[ ! -z $BANNER && -r "/var/$BANNER" ]]
+                then
+                    debug "Showing /var/$BANNER"
+                    cat "/var/$BANNER"
+                fi
+            fi
+            
+            # if motd exists, print that out too
+            if [[ -r "/etc/motd" ]]
+            then
+                debug "Showing /etc/motd"
+                cat "/etc/motd"
+            fi
+        fi
         exec -l $SHELL
     fi
 
@@ -569,6 +710,8 @@ function login() {
             fi
         fi
 
+        update_last_login
+        
         if [[ $mode != "test" ]]
         then
             run_shell
@@ -591,7 +734,7 @@ function request_sms() {
     response=`curl --connect-timeout 10 -A "${useragent}" "${url}" 2>/dev/null`
     debug "[request sms] url: $url | response: $response | curl exit stats: $?"
 
-    if [[ $response == *success*sent* ]]
+    if [[ $response == *success*"was sent"* ]]
     then
         green "SMS message was sent"
     elif [[ $response == *not*enabled* ]]
@@ -606,6 +749,7 @@ function request_sms() {
 function ask_token_and_log_user_in() {
     mode="$(escape_input $1)"
     authy_id="$(escape_number $2)"
+    grace_period="$(escape_number $3)"
 
     if [[ $authy_id == "" ]]
     then
@@ -625,12 +769,21 @@ function ask_token_and_log_user_in() {
       run_shell
     fi
 
+    check_grace_period $grace_period
+    if [[ $? == $OK ]]
+    then
+      debug "Grace period allowed"
+      update_last_login
+      run_shell
+    fi
+
     times=3
     if [[ $AUTHY_TOKEN ]] # env var
     then
       times=1
     fi
 
+    unset IFS
     for i in `$SEQ 1 $times`
     do
         authy_token="$(escape_number $AUTHY_TOKEN)"
@@ -709,14 +862,14 @@ case $1 in
         check_config_file "writable"
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key
-        register_user "$2" "$3" "$4" "$5"
+        register_user "$2" "$3" "$4" "$5" "$6"
         ;;
     login)
         check_config_file
         check_dependencies
         AUTHY_API_KEY="$(read_config api_key)"
         check_api_key
-        ask_token_and_log_user_in "login" "$2"
+        ask_token_and_log_user_in "login" "$2" "$3"
         ;;
     protect)
         check_config_file
@@ -757,9 +910,19 @@ Available commands:
     enable
         receives a list of arguments needed to register a user. usage:
 
-        sudo $0 enable [local-user] [email] [numeric country code] [cellphone]
+        sudo $0 enable [local-user] [email] [numeric country code] [cellphone] <grace period>
 
-        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987
+        Where grace-period, optionally, specifies the number of seconds two-factor authentication will not be
+        required for creating a new session, after a successful login, from the same user and IP address.
+        Using the value of -1 will always require two-factor authentication and is the default if not specified.
+
+        Always require two-factor authentication:
+
+        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987 -1
+
+        Allow 300 seconds after a successful login before requiring two-factor authentication again:
+
+        Example: sudo $0 enable myuser myuser@example.com 1 401-390-9987 300
 
     protect
         installs authy-ssh for the given user
