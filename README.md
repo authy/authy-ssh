@@ -73,7 +73,7 @@ Authy-ssh uses the `sshd_config` directive `ForceCommand` to run itself before e
 
     [root@ip-10-2-113-233 ~]# cat  /etc/ssh/sshd_config | grep ForceCommand
     ForceCommand /usr/local/bin/authy-ssh login
-]
+
 Whenever  it  runs authy-ssh will read it's configuration from /usr/local/bin/authy-ssh.conf
 Here's an example:
 
