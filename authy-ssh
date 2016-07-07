@@ -439,7 +439,7 @@ function register_user_on_authy() {
     fi
 
     useragent="$(user_agent)"
-    response=`curl --connect-timeout 10 "${url}" -A "${useragent}" -d user[email]="${email}" -d user[country_code]="${country_code}" -d user[cellphone]="${cellphone}" -s 2>/dev/null`
+    response=`curl --connect-timeout 10 "${url}" -A "${useragent}" --data-urlencode user[email]="${email}" --data-urlencode user[country_code]="${country_code}" --data-urlencode user[cellphone]="${cellphone}" -s 2>/dev/null`
     ok=true
 
     debug "[register-user] url: $url | response: $response | curl exit stats: $?"
